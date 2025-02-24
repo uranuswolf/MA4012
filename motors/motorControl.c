@@ -10,6 +10,14 @@ void controlMotors(int leftPower, int rightPower) {
 }
 
 int getEncoderSpeed(int previousEncoder, int currentEncoder, int deltaTime) {
-    int deltaTicks = currentEncoder - previousEncoder;
-    return deltaTicks * 1000 / deltaTime;  // Calculate speed in ticks per second (scaled to milliseconds)
+    // Calculate the difference in encoder values
+    int deltaEncoder = currentEncoder - previousEncoder;
+
+    // Calculate speed in ticks per second
+    int speed = deltaEncoder * 1000 / deltaTime;
+
+    // Convert speed to the range of -127 to 127
+    int scaledSpeed = (speed * 127) / 2000;  // assuming 2000 is maxMotorSpeed
+
+    return scaledSpeed;
 }
