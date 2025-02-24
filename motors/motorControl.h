@@ -1,8 +1,9 @@
-// motorControl.h - Header file for motor control
-
 #ifndef MOTORCONTROL_H
 #define MOTORCONTROL_H
 
-void controlMotors(int leftSpeed, int rightSpeed);  // Declaration of the controlMotors function
+extern int maxMotorSpeed; // Maximum speed in encoder ticks per second
+
+void controlMotors(int leftPower, int rightPower);
+int getEncoderSpeed(int previousEncoder, int currentEncoder, int deltaTime);
 
 #endif
