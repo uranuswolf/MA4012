@@ -1,40 +1,39 @@
-#include "motorControl.h"  // Include the header file for motor control
+#include "MotorControl.h"
+#include "PIDControl.h"
 
-// PID coefficients and variables
-float Kp = 0.5;
-float Ki = 0.1;
-float Kd = 0.05;
-float previousError = 0;
-float integral = 0;
+// Example motor encoder sensor definitions
+#define encoderL1 SensorValue[encoderL1]
+#define encoderR1 SensorValue[encoderR1]
 
-task main()
-{
-    // Desired position (setpoint) for the encoders
-    int setpoint = 1000;  // For example, set the target encoder value to 1000
+task main() {
+    int setpoint = 127;  // Desired motor speed (range -127 to 127)
+    int previousEncoderL = 0, previousEncoderR = 0;
+    clearTimer(T1);
 
-    // Reset encoders
-    SensorValue[encoderR1] = 0;
-    SensorValue[encoderL1] = 0;
+    while (true) {
+        int deltaTime = time1[T1];  // Get elapsed time
+        clearTimer(T1);  // Reset timer
 
-    // Run motors based on PID control
-    while(true)
-    {
-        // Get the current encoder values
-        int currentLeft = SensorValue[encoderL1];
-        int currentRight = SensorValue[encoderR1];
+        // Get current encoder values
+        int currentEncoderL = encoderL1;
+        int currentEncoderR = encoderR1;
 
-        // Calculate the PID control output for both motors
-        float leftOutput = pidControl(setpoint, currentLeft);
-        float rightOutput = pidControl(setpoint, currentRight);
+        // Calculate speed (in encoder ticks per second)
+        int speedL = getEncoderSpeed(previousEncoderL, currentEncoderL, deltaTime);
+        int speedR = getEncoderSpeed(previousEncoderR, currentEncoderR, deltaTime);
 
-        // Use the PID output to set motor speeds
-        controlMotors(leftOutput, rightOutput);
+        // Compute PID output for speed control
+        int leftPower = pidControl(setpoint, speedL, maxMotorSpeed);
+        int rightPower = pidControl(setpoint, speedR, maxMotorSpeed);
 
-        // Display encoder values and PID outputs on the debug stream
-        writeDebugStreamLine("Left Encoder: %d, Left Output: %f", currentLeft, leftOutput);
-        writeDebugStreamLine("Right Encoder: %d, Right Output: %f", currentRight, rightOutput);
+        // Apply motor power
+        controlMotors(leftPower, rightPower);
 
-        wait1Msec(20);  // Small delay to prevent overloading the CPU
+        // Update previous encoder values
+        previousEncoderL = currentEncoderL;
+        previousEncoderR = currentEncoderR;
+
+        wait1Msec(20);  // Run loop every 20ms
     }
 }
 
