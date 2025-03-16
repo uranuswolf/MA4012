@@ -1,17 +1,30 @@
 #include "pid.h"
 
-int computePID(int setpoint, int current) {
-    static int lastError = 0;
-    static int integral = 0;
-    
-    int error = setpoint - current;
+// PID variables
+int error, prevError = 0;
+int integral = 0;
+int derivative = 0;
+
+// PID Calculation
+int computePID(int desiredSpeed, int actualSpeed) {
+    error = desiredSpeed - actualSpeed;
     integral += error;
-    int derivative = error - lastError;
-    
-    float Kp = 1.2, Ki = 0.01, Kd = 0.5;
+    derivative = error - prevError;
+    prevError = error;
+
+    // Compute PID output
     int output = (Kp * error) + (Ki * integral) + (Kd * derivative);
-    
-    lastError = error;
-    
+
+    // Limit output to motor range (-127 to 127)
+    if (output > 127) output = 127;
+    if (output < -127) output = -127;
+
     return output;
+}
+
+void resetPID() {
+    error = 0;
+    prevError = 0;
+    integral = 0;
+    derivative = 0;
 }

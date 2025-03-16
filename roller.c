@@ -1,11 +1,15 @@
 #include "roller.h"
 
 // Define motor ports for rollers
-#define FRONT_ROLLER motor[port2]   // Continuous Rotation Motor, **change port number accordingly**
-#define BACK_ROLLER motor[port3]    // Ball release motor, **change port number accordingly**
+#define FRONT_ROLLER motor[port2]   // Vex Continuous Rotation Motor (276-2163) , **change port number accordingly**
+#define BACK_ROLLER motor[port3]    // Vex Continuous Rotation Motor (276-2163), **change port number accordingly**
 
-void activateFrontRoller(int speed) {
-    FRONT_ROLLER = speed;
+void FrontRollerIntakeBall(int speed) { // **check speed sign for intake of ball**
+    FRONT_ROLLER = -speed; //**from ACW from LSV
+}
+
+void FrontRollerOutputBall(int speed) { // **check speed sign for outtake of ball**
+    FRONT_ROLLER = -speed; //**from CW from LSV
 }
 
 void stopFrontRoller() {

@@ -1,7 +1,8 @@
 #ifndef ROLLER_H
 #define ROLLER_H
 
-void activateFrontRoller(int speed);
+void FrontRollerIntakeBall(int speed);
+void FrontRollerOutputBall(int speed);
 void stopFrontRoller();
 void activateBackRoller(int speed);
 void stopBackRoller();
