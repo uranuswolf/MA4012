@@ -40,7 +40,7 @@ int computePID(int desiredSpeed, int actualSpeed) {
     derivative = error - prevError;
     prevError = error;
     
-    int output = (0.5 * error)+(0.01 * integral) + (0.1 * derivative);
+    int output = (0.5 * error) + (0.01 * integral) + (0.1 * derivative);
     if (output > 127) output = 127;
     if (output < -127) output = -127;
     
@@ -55,6 +55,23 @@ void resetPID() {
 }
 
 void stopMotors() {
+    int leftTicks = SensorValue[LEFT_ENCODER];
+    int rightTicks = SensorValue[RIGHT_ENCODER];
+
+    // Encoder correction before stopping
+    if (leftTicks > rightTicks) {
+        RIGHT_MOTOR = 10; // Boost right motor slightly
+        wait1Msec(100);
+    } else if (rightTicks > leftTicks) {
+        LEFT_MOTOR = 10; // Boost left motor slightly
+        wait1Msec(100);
+    }
+
+    // Apply brief reverse power to balance braking
+    LEFT_MOTOR = -10;
+    RIGHT_MOTOR = -10;
+    wait1Msec(100);
+
     LEFT_MOTOR = 0;
     RIGHT_MOTOR = 0;
 }
@@ -64,16 +81,24 @@ void moveForward(int speed, int duration) {
     resetEncoders();
     int startTime = nSysTime;
     
-    int leftOffset = 42;  // Adjust as needed
-    int rightOffset = 0; // Can also be adjusted if necessary
+    int leftOffset = 42;  // Adjust as needed for straight motion
+    int rightOffset = 0;
 
-    while (nSysTime - startTime < duration) {
+    while (nSysTime - startTime < duration - 500) { // Normal motion
         int leftPower = computePID(speed, getLeftEncoderSpeed()) + leftOffset;
         int rightPower = -computePID(speed, getRightEncoderSpeed()) + rightOffset;
 
         LEFT_MOTOR = leftPower;
         RIGHT_MOTOR = rightPower;
     }
+
+    // Gradual slow down in the last 500ms
+    for (int i = 0; i <= 10; i++) {
+        LEFT_MOTOR = (LEFT_MOTOR * (10 - i)) / 10;
+        RIGHT_MOTOR = (RIGHT_MOTOR * (10 - i)) / 10;
+        wait1Msec(50);
+    }
+
     stopMotors();
 }
 
@@ -111,7 +136,7 @@ void moveForward(int speed, int duration) {
 //}
 
 task main() {
-    moveForward(-127, 2000); // Move forward at speed 80 for 3 seconds
+    moveForward(-127, 2000); // Move forward at speed 127 for 2 seconds
     //wait1Msec(500); // Small delay
     //turnLeft(60, 1000); // Turn left for 1 second
     //wait1Msec(500);
