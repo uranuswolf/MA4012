@@ -1,7 +1,7 @@
 #include "encoder.h"
 #include <math.h>  
 
-#define max_Ticks_per_sec (a_number to be detemine experimentally)
+#define max_Ticks_per_sec 1450 
 //run encoderTest.c to find the max ticks per second for max speed power 127 experimentally,
 //Best to do when the the whole system is ready 
 
