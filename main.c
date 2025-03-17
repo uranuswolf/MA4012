@@ -13,6 +13,10 @@ int error, prevError = 0;
 int integral = 0;
 int derivative = 0;
 
+// Global motor offsets
+int leftMotorOffset = 5;  // Adjust as needed
+int rightMotorOffset = 0; // Adjust as needed
+
 void resetEncoders() {
     SensorValue[LEFT_ENCODER] = 0;
     SensorValue[RIGHT_ENCODER] = 0;
@@ -54,20 +58,23 @@ void resetPID() {
     derivative = 0;
 }
 
+void setMotorPower(int leftPower, int rightPower) {
+    LEFT_MOTOR = leftPower + leftMotorOffset;
+    RIGHT_MOTOR = rightPower + rightMotorOffset;
+}
+
 void stopMotors() {
     int leftTicks = SensorValue[LEFT_ENCODER];
     int rightTicks = SensorValue[RIGHT_ENCODER];
 
-    // Encoder correction before stopping
     if (leftTicks > rightTicks) {
-        RIGHT_MOTOR = 10; // Boost right motor slightly
+        RIGHT_MOTOR = 10;
         wait1Msec(100);
     } else if (rightTicks > leftTicks) {
-        LEFT_MOTOR = 10; // Boost left motor slightly
+        LEFT_MOTOR = 10;
         wait1Msec(100);
     }
 
-    // Apply brief reverse power to balance braking
     LEFT_MOTOR = -10;
     RIGHT_MOTOR = -10;
     wait1Msec(100);
@@ -80,68 +87,60 @@ void moveForward(int speed, int duration) {
     resetPID();
     resetEncoders();
     int startTime = nSysTime;
-    
-    int leftOffset = 42;  // Adjust as needed for straight motion
-    int rightOffset = 0;
 
-    while (nSysTime - startTime < duration - 500) { // Normal motion
-        int leftPower = computePID(speed, getLeftEncoderSpeed()) + leftOffset;
-        int rightPower = -computePID(speed, getRightEncoderSpeed()) + rightOffset;
-
-        LEFT_MOTOR = leftPower;
-        RIGHT_MOTOR = rightPower;
+    while (nSysTime - startTime < duration - 500) {
+        int leftPower = computePID(speed, getLeftEncoderSpeed());
+        int rightPower = -computePID(speed, getRightEncoderSpeed());
+        setMotorPower(leftPower, rightPower);
     }
 
-    // Gradual slow down in the last 500ms
     for (int i = 0; i <= 10; i++) {
-        LEFT_MOTOR = (LEFT_MOTOR * (10 - i)) / 10;
-        RIGHT_MOTOR = (RIGHT_MOTOR * (10 - i)) / 10;
+        setMotorPower((LEFT_MOTOR * (10 - i)) / 10, (RIGHT_MOTOR * (10 - i)) / 10);
         wait1Msec(50);
     }
-
     stopMotors();
 }
 
-//void moveBackward(int speed, int duration) {
-    //resetPID();
-    //resetEncoders();
-    //int startTime = nSysTime;
-    //while (nSysTime - startTime < duration) {
-        //LEFT_MOTOR = -computePID(speed, getLeftEncoderSpeed());
-        //RIGHT_MOTOR = computePID(speed, getRightEncoderSpeed());
-    //}
-    //stopMotors();
-//}
+void moveBackward(int speed, int duration) {
+    resetPID();
+    resetEncoders();
+    int startTime = nSysTime;
 
-//void turnLeft(int speed, int duration) {
-    //resetPID();
-   // resetEncoders();
-    //int startTime = nSysTime;
-    //while (nSysTime - startTime < duration) {
-        //LEFT_MOTOR = -computePID(speed, getLeftEncoderSpeed());
-        //RIGHT_MOTOR = -computePID(speed, getRightEncoderSpeed());
-    //}
-    //stopMotors();
-//}
+    while (nSysTime - startTime < duration) {
+        int leftPower = -computePID(speed, getLeftEncoderSpeed());
+        int rightPower = computePID(speed, getRightEncoderSpeed());
+        setMotorPower(leftPower, rightPower);
+    }
+    stopMotors();
+}
 
-//void turnRight(int speed, int duration) {
-    //resetPID();
-    //resetEncoders();
-    //int startTime = nSysTime;
-    //while (nSysTime - startTime < duration) {
-        //LEFT_MOTOR = computePID(speed, getLeftEncoderSpeed());
-        //RIGHT_MOTOR = computePID(speed, getRightEncoderSpeed());
-    //}
-    //stopMotors();
-//}
+void turnLeft(int speed, int duration) {
+    resetPID();
+    resetEncoders();
+    int startTime = nSysTime;
+
+    while (nSysTime - startTime < duration) {
+        int leftPower = -computePID(speed, getLeftEncoderSpeed());
+        int rightPower = -computePID(speed, getRightEncoderSpeed());
+        setMotorPower(leftPower, rightPower);
+    }
+    stopMotors();
+}
+
+void turnRight(int speed, int duration) {
+    resetPID();
+    resetEncoders();
+    int startTime = nSysTime;
+
+    while (nSysTime - startTime < duration) {
+        int leftPower = computePID(speed, getLeftEncoderSpeed());
+        int rightPower = computePID(speed, getRightEncoderSpeed());
+        setMotorPower(leftPower, rightPower);
+    }
+    stopMotors();
+}
 
 task main() {
-    moveForward(-127, 2000); // Move forward at speed 127 for 2 seconds
-    //wait1Msec(500); // Small delay
-    //turnLeft(60, 1000); // Turn left for 1 second
-    //wait1Msec(500);
-    //moveBackward(80, 2000); // Move backward at speed 80 for 2 seconds
-    //wait1Msec(500);
-    //turnRight(60, 1000); // Turn right for 1 second
+    moveForward(-127, 2000);
     stopMotors();
 }
