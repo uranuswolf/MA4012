@@ -40,7 +40,7 @@ int computePID(int desiredSpeed, int actualSpeed) {
     derivative = error - prevError;
     prevError = error;
     
-    int output = (0.5 * error);
+    int output = (0.5 * error)+(0.01 * integral) + (0.1 * derivative);
     if (output > 127) output = 127;
     if (output < -127) output = -127;
     
@@ -64,7 +64,7 @@ void moveForward(int speed, int duration) {
     resetEncoders();
     int startTime = nSysTime;
     
-    int leftOffset = 5;  // Adjust as needed
+    int leftOffset = 42;  // Adjust as needed
     int rightOffset = 0; // Can also be adjusted if necessary
 
     while (nSysTime - startTime < duration) {
@@ -111,7 +111,7 @@ void moveForward(int speed, int duration) {
 //}
 
 task main() {
-    moveForward(-80, 3000); // Move forward at speed 80 for 3 seconds
+    moveForward(-127, 2000); // Move forward at speed 80 for 3 seconds
     //wait1Msec(500); // Small delay
     //turnLeft(60, 1000); // Turn left for 1 second
     //wait1Msec(500);
