@@ -40,7 +40,7 @@ int computePID(int desiredSpeed, int actualSpeed) {
     derivative = error - prevError;
     prevError = error;
     
-    int output = (0.5 * error) + (0.01 * integral) + (0.1 * derivative);
+    int output = (0.5 * error);
     if (output > 127) output = 127;
     if (output < -127) output = -127;
     
