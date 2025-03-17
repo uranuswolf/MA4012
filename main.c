@@ -74,7 +74,7 @@ void moveForwardPID(float distance) {
 
         // Set motor power
         motor[motorLeft] = leftPower;
-        motor[motorRight] = rightPower;
+        motor[motorRight] = -rightPower; //because of mirror image
 
         wait1Msec(20); // Short delay for stability
     }
