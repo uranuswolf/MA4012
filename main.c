@@ -57,37 +57,45 @@ void resetPID() {
 void moveForward(int speed) {
     resetPID();
     resetEncoders();
-    while(true) {
+    int startTime = nSysTime;
+    while (nSysTime - startTime < duration) {
         LEFT_MOTOR = computePID(speed, getLeftEncoderSpeed());
         RIGHT_MOTOR = -computePID(speed, getRightEncoderSpeed());
     }
+    stopMotors();
 }
 
 void moveBackward(int speed) {
     resetPID();
     resetEncoders();
-    while(true) {
+    int startTime = nSysTime;
+    while (nSysTime - startTime < duration) {
         LEFT_MOTOR = -computePID(speed, getLeftEncoderSpeed());
         RIGHT_MOTOR = computePID(speed, getRightEncoderSpeed());
     }
+    stopMotors();
 }
 
 void turnLeft(int speed) {
     resetPID();
     resetEncoders();
-    while(true) {
+    int startTime = nSysTime;
+    while (nSysTime - startTime < duration) {
         LEFT_MOTOR = -computePID(speed, getLeftEncoderSpeed());
         RIGHT_MOTOR = -computePID(speed, getRightEncoderSpeed());
     }
+    stopMotors();
 }
 
 void turnRight(int speed) {
     resetPID();
     resetEncoders();
-    while(true) {
+    int startTime = nSysTime;
+    while (nSysTime - startTime < duration) {
         LEFT_MOTOR = computePID(speed, getLeftEncoderSpeed());
         RIGHT_MOTOR = computePID(speed, getRightEncoderSpeed());
     }
+    stopMotors();
 }
 
 void stopMotors() {
@@ -96,8 +104,11 @@ void stopMotors() {
 }
 
 task main() {
-    moveForward(-80);
-    wait1Msec(1000);
+    moveForward(80, 1000); // Move forward at speed 80 for 2 seconds
+    wait1Msec(500); // Small delay
+    turnLeft(60, 1000); // Turn left for 1 second
+    wait1Msec(500);
+    moveBackward(80, 1000); // Move backward at speed 80 for 2 seconds
     stopMotors();
     //wait1Msec(1000);
     //moveBackward(80);
