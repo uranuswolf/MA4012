@@ -63,9 +63,16 @@ void moveForward(int speed, int duration) {
     resetPID();
     resetEncoders();
     int startTime = nSysTime;
+    
+    int leftOffset = 5;  // Adjust as needed
+    int rightOffset = 0; // Can also be adjusted if necessary
+
     while (nSysTime - startTime < duration) {
-        LEFT_MOTOR = computePID(speed, getLeftEncoderSpeed());
-        RIGHT_MOTOR = -computePID(speed, getRightEncoderSpeed());
+        int leftPower = computePID(speed, getLeftEncoderSpeed()) + leftOffset;
+        int rightPower = -computePID(speed, getRightEncoderSpeed()) + rightOffset;
+
+        LEFT_MOTOR = leftPower;
+        RIGHT_MOTOR = rightPower;
     }
     stopMotors();
 }
