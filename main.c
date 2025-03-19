@@ -47,9 +47,11 @@ void moveForwardPID(float distance) {
             break;
         }
 
-        // Compute integral
+        // Compute integral (with windup prevention)
         leftIntegral += leftError;
         rightIntegral += rightError;
+        if (abs(leftIntegral) > 1000) leftIntegral = 1000 * (leftIntegral / abs(leftIntegral));
+        if (abs(rightIntegral) > 1000) rightIntegral = 1000 * (rightIntegral / abs(rightIntegral));
 
         // Compute derivative
         leftDerivative = leftError - lastLeftError;
@@ -63,8 +65,8 @@ void moveForwardPID(float distance) {
         int rightPID = (kP * rightError) + (kI * rightIntegral) + (kD * rightDerivative);
 
         // Apply PID output to motor power
-        leftPower = 50 + leftPID;
-        rightPower = 50 + rightPID;
+        leftPower = leftPID;
+        rightPower = rightPID;
 
         // Ensure motor power stays within limits (-127 to 127)
         if (leftPower > 127) leftPower = 127;
@@ -72,9 +74,12 @@ void moveForwardPID(float distance) {
         if (leftPower < -127) leftPower = -127;
         if (rightPower < -127) rightPower = -127;
 
-        // Set motor power
-        motor[motorLeft] = leftPower;
-        motor[motorRight] = -rightPower; //because of mirror image
+        // Set motor power (accounting for mirror image setup)
+        motor[motorLeft] = -leftPower;  // Reverse left motor if needed
+        motor[motorRight] = rightPower; // Keep right motor as is
+
+        // Debugging output
+        writeDebugStreamLine("Left Power: %d, Right Power: %d", leftPower, rightPower);
 
         wait1Msec(20); // Short delay for stability
     }
