@@ -36,7 +36,7 @@ void moveForwardPID(float distance) {
 
     while (true) {
         int leftPos = SensorValue[LEFT_ENCODER];
-        int rightPos = SensorValue[RIGHT_ENCODER];
+        int rightPos = -SensorValue[RIGHT_ENCODER]; // Negate since it measures negative moving forward
 
         // Compute separate errors
         leftError = targetTicks - leftPos;
@@ -65,18 +65,16 @@ void moveForwardPID(float distance) {
         int rightPID = (kP * rightError) + (kI * rightIntegral) + (kD * rightDerivative);
 
         // Apply PID output to motor power
-        leftPower = leftPID;
-        rightPower = rightPID;
+        leftPower = -leftPID;  // Reverse left motor due to mirror image
+        rightPower = rightPID; // Right motor remains as is
 
         // Ensure motor power stays within limits (-127 to 127)
-        if (leftPower > 127) leftPower = 127;
-        if (rightPower > 127) rightPower = 127;
-        if (leftPower < -127) leftPower = -127;
-        if (rightPower < -127) rightPower = -127;
+        leftPower = (leftPower > 127) ? 127 : (leftPower < -127) ? -127 : leftPower;
+        rightPower = (rightPower > 127) ? 127 : (rightPower < -127) ? -127 : rightPower;
 
-        // Set motor power (accounting for mirror image setup)
-        motor[motorLeft] = -leftPower;  // Reverse left motor if needed
-        motor[motorRight] = rightPower; // Keep right motor as is
+        // Set motor power
+        motor[motorLeft] = leftPower;
+        motor[motorRight] = rightPower;
 
         // Debugging output
         writeDebugStreamLine("Left Power: %d, Right Power: %d", leftPower, rightPower);
