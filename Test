@@ -148,8 +148,7 @@ task main() {
     wait1Msec(500);
     turnLeft(150, 1000);    // Turn left for 1 second
     wait1Msec(500);
-    moveBackward(200, 2000);// Move backward for 2 seconds
+    moveBackward(200, 2000); // Move backward for 2 seconds
     wait1Msec(500);
     turnRight(150, 1000);   // Turn right for 1 second
 }
-
