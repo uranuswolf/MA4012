@@ -1,0 +1,7 @@
+task main() {
+    motor[motorLeft] = 80;
+    motor[motorRight] = 80;
+    wait1Msec(2000);
+    motor[motorLeft] = 0;
+    motor[motorRight] = 0;
+}
