@@ -24,15 +24,13 @@ void moveDistance(float distance, bool backward = false) {
     SensorValue[LEFT_ENCODER] = 0;
     SensorValue[RIGHT_ENCODER] = 0;
     
-    int leftPower = basePower;
-    int rightPower = basePower;
     if (backward) {
-        leftPower = -basePower;
-        rightPower = -basePower;
+        motor[motorLeft] = basePower;
+        motor[motorRight] = -basePower;
     }
-    
-    motor[motorLeft] = leftPower;
-    motor[motorRight] = rightPower;
+    // forward direction
+    motor[motorLeft] = -basePower;
+    motor[motorRight] = basePower;
     
     while (abs(SensorValue[LEFT_ENCODER]) < targetTicks && abs(SensorValue[RIGHT_ENCODER]) < targetTicks) {
         wait1Msec(10);
@@ -44,23 +42,21 @@ void moveDistance(float distance, bool backward = false) {
 
 // Turn left or right using encoder counts
 void turnDegrees(float degrees, bool right = false) {
-    float arcLength = (degrees / 360) * 2 * 3.14159 * (wheelBase / 2);
+    float arcLength = (degrees / 180) * 3.14159 * (wheelBase / 2);
     int targetTicks = distanceToTicks(arcLength);
     SensorValue[LEFT_ENCODER] = 0;
     SensorValue[RIGHT_ENCODER] = 0;
     
-    int leftPower = basePower;
-    int rightPower = -basePower;
     if (right) {
-        leftPower = -basePower;
-        rightPower = basePower;
+       motor[motorLeft] = -basePower;
+       motor[motorRight] = -basePower;
     }
     
-    motor[motorLeft] = leftPower;
-    motor[motorRight] = rightPower;
+    motor[motorLeft] = basePower;
+    motor[motorRight] = basePower;
     
     while (abs(SensorValue[LEFT_ENCODER]) < targetTicks && abs(SensorValue[RIGHT_ENCODER]) < targetTicks) {
-        wait1Msec(10);
+        wait1Msec(10); //check encoder value every 10ms
     }
     
     motor[motorLeft] = 0;
