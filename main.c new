@@ -56,4 +56,33 @@ void turnDegrees(float degrees, bool right = false) {
     if (right) {
         // Turn right: left motor forward, right motor backward
         motor[motorLeft] = -basePower;  // forward for left motor
-        motor[motorRight] = -basePower; //
+        motor[motorRight] = -basePower; // backward for right motor
+    } else {
+        // Turn left: left motor backward, right motor forward
+        motor[motorLeft] = basePower;   // backward for left motor
+        motor[motorRight] = basePower;  // forward for right motor
+    }
+
+    while (abs(SensorValue[LEFT_ENCODER]) < targetTicks &&
+           abs(SensorValue[RIGHT_ENCODER]) < targetTicks) {
+        wait1Msec(10);
+    }
+
+    // Stop motors
+    motor[motorLeft] = 0;
+    motor[motorRight] = 0;
+}
+
+// Main routine
+task main() {
+    moveDistance(1.0);        // Move forward 1 meter
+    wait1Msec(1000);
+
+    moveDistance(1.0, true);  // Move backward 1 meter
+    wait1Msec(1000);
+
+    turnDegrees(90);          // Turn left 90 degrees (in place)
+    wait1Msec(1000);
+
+    turnDegrees(90, true);    // Turn right 90 degrees (in place)
+}
