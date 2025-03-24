@@ -96,11 +96,31 @@ task main() {
     moveDistance(1.8, true); //Return back to base
     wait1Msec(500);
 	
-    turnDegrees(20, true); //Start Scan at 2nd column
+    turnDegrees(10, true); //Start Scan at 2nd column
     wait1Msec(500);
-    moveDistance(1.8, true);
+    turnDegrees(30);
+    wait1Msec(500);
     turnDegrees(40, true);
-    wait1Msec(1000);
+    wait1Msec(500);
     turnDegrees(20);
-    wait1Msec(1000);
+    wait1Msec(500);
+
+    moveDistance(0.3); //2nd Scan
+    turnDegrees(20);
+    wait1Msec(500);
+    turnDegrees(40, true);
+    wait1Msec(500);
+    turnDegrees(20);
+    wait1Msec(500);
+
+    moveDistance(0.3); //3rd Scan
+    turnDegrees(20);
+    wait1Msec(500);
+    turnDegrees(40, true);
+    wait1Msec(500);
+    turnDegrees(20);
+    wait1Msec(500);
+
+    moveDistance(1.8, true); //Return back to base
+    wait1Msec(500);
 }
