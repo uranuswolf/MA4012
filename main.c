@@ -20,7 +20,8 @@ int distanceToTicks(float distance) {
 
 // Move forward or backward by distance (in meters)
 void moveDistance(float distance, bool backward = false) {
-    int targetTicks = distanceToTicks(distance);
+	  float realDistance = distance *10; 
+    int targetTicks = distanceToTicks(realDistance);
     SensorValue[LEFT_ENCODER] = 0;
     SensorValue[RIGHT_ENCODER] = 0;
 
@@ -42,19 +43,20 @@ void moveDistance(float distance, bool backward = false) {
 
 // Turn left or right by angle (in degrees)
 void turnDegrees(float degrees, bool right = false) {
+	  float realDegrees = degrees * 2.5;
     float turningCircumference = 3.14159 * wheelBase;  // Full turning circle
-    float arcLength = (degrees / 360.0) * turningCircumference; // One wheel arc distance
+    float arcLength = (realDegrees / 180.0) * turningCircumference; // One wheel arc distance
     int targetTicks = distanceToTicks(arcLength);
 
     SensorValue[LEFT_ENCODER] = 0;
     SensorValue[RIGHT_ENCODER] = 0;
 
     if (right) {
-        motor[motorLeft] = -basePower;
-        motor[motorRight] = -basePower;
+        motor[motorLeft] = -127;
+        motor[motorRight] = -127;
     } else {
-        motor[motorLeft] = basePower;
-        motor[motorRight] = basePower;
+        motor[motorLeft] = 127;
+        motor[motorRight] =127;
     }
 
     while (abs(SensorValue[LEFT_ENCODER]) < targetTicks && abs(SensorValue[RIGHT_ENCODER]) < targetTicks) {
@@ -66,11 +68,11 @@ void turnDegrees(float degrees, bool right = false) {
 }
 
 task main() {
-    moveDistance(10); // Move forward 1 meter
+    moveDistance(1); // Move forward 1 meter
     wait1Msec(1000);
-    moveDistance(10, true); // Move backward 1 meter
+    moveDistance(1, true); // Move backward 1 meter
     wait1Msec(1000);
     turnDegrees(90);         // Turn left 90 degrees
     wait1Msec(1000);
-    turnDegrees(180, true);   // Turn right 90 degrees
+    turnDegrees(180, true);   // Turn right 180 degrees
 }
