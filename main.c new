@@ -47,7 +47,7 @@ void moveDistance(float distance, bool backward = false) {
 // Turn left or right in place by a specific number of degrees
 void turnDegrees(float degrees, bool right = false) {
     // Corrected arc length formula using full wheelBase
-    float arcLength = (degrees / 360.0) * 3.14159 * wheelBase;
+    float arcLength = (degrees / 180.0) * 3.14159 * wheelBase;
     int targetTicks = distanceToTicks(arcLength);
 
     SensorValue[LEFT_ENCODER] = 0;
