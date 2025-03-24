@@ -36,19 +36,24 @@ ObstacleAvoidance(IR_A_VALUE, IR_B_VALUE, IR_C_VALUE, IR_D_VALUE){
     
     switch (IR_State) {
         case 1:
-            // Code block for (IR_A_VALUE == 0 && IR_B_VALUE == 0 && IR_C_VALUE == 1 && IR_D_VALUE == 1)
+            // move backwards for 0.5m and make a 180 degrees turn
+            moveDistance(0.5, true);
+            turnDegrees(180);
             break;
         
         case 2:
-            // Code block for (IR_A_VALUE == 0 && IR_B_VALUE == 1 && IR_C_VALUE == 0 && IR_D_VALUE == 0)
+            // turn left 90 degrees
+            turnDegrees(90);
             break;
         
         case 3:
-            // Code block for (IR_A_VALUE == 1 && IR_B_VALUE == 0 && IR_C_VALUE == 1 && IR_D_VALUE == 0)
+            // turn right 90 degrees
+            turnDegrees(90, true);
             break;
     
         case 4:
-            // Code block for (IR_A_VALUE == 1 && IR_B_VALUE == 1 && IR_C_VALUE == 0 && IR_D_VALUE == 0)
+            // move forward for 0.5m
+            moveDistance(0.5);
             break;
         
         default:

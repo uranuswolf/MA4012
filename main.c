@@ -20,7 +20,7 @@ int distanceToTicks(float distance) {
 
 // Move forward or backward by distance (in meters)
 void moveDistance(float distance, bool backward = false) {
-	  float realDistance = distance *10; 
+	float realDistance = distance *10; 
     int targetTicks = distanceToTicks(realDistance);
     SensorValue[LEFT_ENCODER] = 0;
     SensorValue[RIGHT_ENCODER] = 0;
