@@ -43,7 +43,7 @@ void moveDistance(float distance, bool backward = false) {
 
 // Turn left or right by angle (in degrees)
 void turnDegrees(float degrees, bool right = false) {
-	  float realDegrees = degrees * 2.5;
+    float realDegrees = degrees * 2.5;
     float turningCircumference = 3.14159 * wheelBase;  // Full turning circle
     float arcLength = (realDegrees / 180.0) * turningCircumference; // One wheel arc distance
     int targetTicks = distanceToTicks(arcLength);
