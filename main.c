@@ -68,11 +68,39 @@ void turnDegrees(float degrees, bool right = false) {
 }
 
 task main() {
-    moveDistance(1); // Move forward 1 meter
+    moveDistance(1.2); //1st Scan
+    wait1Msec(500);
+    turnDegrees(20);
+    wait1Msec(500);
+    turnDegrees(40, true);
+    wait1Msec(500);
+    turnDegrees(20);
+    wait1Msec(500);
+	
+    moveDistance(0.3); //2nd Scan
+    turnDegrees(20);
+    wait1Msec(500);
+    turnDegrees(40, true);
+    wait1Msec(500);
+    turnDegrees(20);
+    wait1Msec(500);
+
+    moveDistance(0.3); //3rd Scan
+    turnDegrees(20);
+    wait1Msec(500);
+    turnDegrees(40, true);
+    wait1Msec(500);
+    turnDegrees(20);
+    wait1Msec(500);
+
+    moveDistance(1.8, true); //Return back to base
+    wait1Msec(500);
+	
+    turnDegrees(20, true); //Start Scan at 2nd column
+    wait1Msec(500);
+    moveDistance(1.8, true);
+    turnDegrees(40, true);
     wait1Msec(1000);
-    moveDistance(1, true); // Move backward 1 meter
+    turnDegrees(20);
     wait1Msec(1000);
-    turnDegrees(90);         // Turn left 90 degrees
-    wait1Msec(1000);
-    turnDegrees(180, true);   // Turn right 180 degrees
 }
