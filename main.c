@@ -6,8 +6,8 @@
 
 // PID constants
 float kP = 0.5;
-float kI = 0.01;
-float kD = 0.1;
+float kI = 0;
+float kD = 0;
 
 // Base power to ensure movement
 int basePower = 50;
@@ -17,7 +17,7 @@ float wheelDiameter = 0.06985; // in meters
 float wheelCircumference = wheelDiameter * 3.14159; // meters
 int ticksPerRevolution = 90; // VEX encoder ticks per shaft revolution
 float distancePerTick = wheelCircumference / ticksPerRevolution; // meters per tick = 0.0024387
-float wheelBase = 0.3; // Distance between the two wheels (meters)
+float wheelBase = 0.188; // Distance between the two wheels (meters)
 
 // Convert desired distance (meters) to encoder ticks
 int distanceToTicks(float distance) {
@@ -180,7 +180,7 @@ void turnPID(float degrees, bool Right = false) {
 
 task main() {
     movePID(1.0); // Move forward 1.0 meters
-    movePID(1.0, true); // Move backward 1.0 meters
-    turnPID(90); // Turn left 90 degrees
-    turnPID(90, true); // Turn right 90 degrees
+    movePID(0, true); // Move backward 1.0 meters
+    turnPID(0); // Turn left 90 degrees
+    turnPID(0, true); // Turn right 90 degrees
 }
