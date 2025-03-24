@@ -1,26 +1,18 @@
-#include "roller.h"
+#pragma config(Motor, port9, backRoller, tmotorVex393_MC29, openLoop)
 
-// Define motor ports for rollers
-#define FRONT_ROLLER motor[port2]   // Vex Continuous Rotation Motor (276-2163) , **change port number accordingly**
-#define BACK_ROLLER motor[port3]    // Vex Continuous Rotation Motor (276-2163), **change port number accordingly**
-
-void FrontRollerIntakeBall(int speed) { // **check speed sign for intake of ball**
-    FRONT_ROLLER = -speed; //**from ACW from LSV
-}
-
-void FrontRollerOutputBall(int speed) { // **check speed sign for outtake of ball**
-    FRONT_ROLLER = -speed; //**from CW from LSV
-}
-
-void stopFrontRoller() {
-    FRONT_ROLLER = 0;
-}
-
+// Function to activate back roller
 void activateBackRoller(int speed) {
-    BACK_ROLLER = speed;
+    motor[backRoller] = speed;
 }
 
+// Function to stop back roller
 void stopBackRoller() {
-    BACK_ROLLER = 0;
+    motor[backRoller] = 0;
 }
 
+// Main task to test motor functions
+task main() {
+    activateBackRoller(127);  // Activate back roller at 50% speed
+    wait1Msec(15000);         // Wait for 2 seconds
+    stopBackRoller();        // Stop back roller
+}
