@@ -51,10 +51,10 @@ void turnDegrees(float degrees, bool right = false) {
 
     if (right) {
         motor[motorLeft] = -basePower;
-        motor[motorRight] = basePower;
+        motor[motorRight] = -basePower;
     } else {
         motor[motorLeft] = basePower;
-        motor[motorRight] = -basePower;
+        motor[motorRight] = basePower;
     }
 
     while (abs(SensorValue[LEFT_ENCODER]) < targetTicks && abs(SensorValue[RIGHT_ENCODER]) < targetTicks) {
