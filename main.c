@@ -6,9 +6,12 @@
 // Base motor power for movement
 int basePower = 50;
 
+// Define MACROS
+#define PI 3.14159265359
+
 // Wheel and encoder specs
 float wheelDiameter = 0.06985; // meters
-float wheelCircumference = wheelDiameter * 3.14159; // meters
+float wheelCircumference = wheelDiameter * PI; // meters
 int ticksPerRevolution = 90; // encoder ticks per revolution
 float distancePerTick = wheelCircumference / ticksPerRevolution; // meters per tick
 float wheelBase = 0.188; // distance between wheels (meters)
@@ -16,6 +19,10 @@ float wheelBase = 0.188; // distance between wheels (meters)
 // Convert desired distance in meters to encoder ticks
 int distanceToTicks(float distance) {
     return distance / distancePerTick;
+}
+// Convert degrees to Radians 
+float degreesToRadians(float degrees) {
+    return degrees * PI / 180.0;
 }
 
 // Move forward or backward by distance (in meters)
@@ -43,9 +50,14 @@ void moveDistance(float distance, bool backward = false) {
 
 // Turn left or right by angle (in degrees)
 void turnDegrees(float degrees, bool right = false) {
-    float realDegrees = degrees * 2.5;
-    float turningCircumference = 3.14159 * wheelBase;  // Full turning circle
-    float arcLength = (realDegrees / 180.0) * turningCircumference; // One wheel arc distance
+    //float realDegrees = degrees * 2.5;
+    //float turningCircumference = 3.14159 * wheelBase;  // Full turning circle
+    //float arcLength = (realDegrees / 180.0) * turningCircumference; // One wheel arc distance
+
+    //Arc length formula : ArcLength=r*theta, where r is in radians 
+    float angleRadian = degreesToRadians(degrees); 
+    float arcLength = angleRadian * (wheelBase/2);
+	
     int targetTicks = distanceToTicks(arcLength);
 
     SensorValue[LEFT_ENCODER] = 0;
