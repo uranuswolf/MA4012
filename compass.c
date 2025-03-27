@@ -3,7 +3,7 @@
 #pragma config(Sensor, dgtl8, compass_Bit2,   sensorDigitalIn)
 #pragma config(Sensor, dgtl7, compass_MSB,    sensorDigitalIn)
 
-int compass(){
+float compass(){
 	int num;
 	num = SensorValue[compass_MSB]*pow(2,3) + SensorValue[compass_Bit2]*pow(2,2) + SensorValue[compass_Bit3]*2 + SensorValue[compass_LSB];
 	switch(num){
@@ -19,7 +19,7 @@ int compass(){
 		break;
 	case 12: return 225; 	//NE
 		break;
-	case 14: return 270; 	//N
+	case 14: return 270; 	//W
 		break;
 	case 6: return 315; 	//NW
 		break;
@@ -27,8 +27,11 @@ int compass(){
 	return -1;
 }
 
-task check_current_orientation(){
-	while(1){
-		current_orientation = compass();
-	}
+
+task main() {
+    while (true) {  // Continuously print the compass value
+        float heading = compass();  // Get the compass heading
+        writeDebugStreamLine("Compass Heading: %f", heading);  // Print it to debug stream
+        wait1Msec(500);  // Small delay to prevent spam
+    }
 }
