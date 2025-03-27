@@ -1,0 +1,116 @@
+#pragma config(Sensor, dgtl2,  RIGHT_ENCODER,  sensorQuadEncoder)
+#pragma config(Sensor, dgtl4,  LEFT_ENCODER,   sensorQuadEncoder)
+#pragma config(Motor,  port3,  motorLeft,      tmotorVex393_MC29, openLoop)
+#pragma config(Motor,  port4,  motorRight,     tmotorVex393_MC29, openLoop)
+
+int basePower = 50;
+#define PI 3.14159265359
+
+float wheelDiameter = 0.06985;
+float wheelCircumference = wheelDiameter * PI;
+int ticksPerRevolution = 90;
+float distancePerTick = wheelCircumference / ticksPerRevolution;
+float wheelBase = 0.188;
+
+int distanceToTicks(float distance) {
+    return distance / distancePerTick;
+}
+float degreesToRadians(float degrees) {
+    return degrees * PI / 180.0;
+}
+
+void moveDistance(float distance, bool backward = false) {
+    float realDistance = distance * 10;
+    int targetTicks = distanceToTicks(realDistance);
+    SensorValue[LEFT_ENCODER] = 0;
+    SensorValue[RIGHT_ENCODER] = 0;
+
+    if (backward) {
+        motor[motorLeft] = basePower;
+        motor[motorRight] = -basePower;
+    } else {
+        motor[motorLeft] = -basePower;
+        motor[motorRight] = basePower;
+    }
+
+    while (abs(SensorValue[LEFT_ENCODER]) < targetTicks && abs(SensorValue[RIGHT_ENCODER]) < targetTicks) {
+        wait1Msec(10);
+    }
+
+    motor[motorLeft] = 0;
+    motor[motorRight] = 0;
+}
+
+void turnDegrees(float degrees, bool right = false) {
+    float angleRadian = degreesToRadians(degrees);
+    float arcLength = angleRadian * (wheelBase / 2);
+    int targetTicks = distanceToTicks(arcLength);
+
+    SensorValue[LEFT_ENCODER] = 0;
+    SensorValue[RIGHT_ENCODER] = 0;
+
+    if (right) {
+        motor[motorLeft] = -127;
+        motor[motorRight] = -127;
+    } else {
+        motor[motorLeft] = 127;
+        motor[motorRight] = 127;
+    }
+
+    while (abs(SensorValue[LEFT_ENCODER]) < targetTicks && abs(SensorValue[RIGHT_ENCODER]) < targetTicks) {
+        wait1Msec(10);
+    }
+
+    motor[motorLeft] = 0;
+    motor[motorRight] = 0;
+}
+
+// Helper to perform a scan routine
+void scanSequence() {
+    turnDegrees(20);
+    wait1Msec(500);
+    turnDegrees(40, true);
+    wait1Msec(500);
+    turnDegrees(20);
+    wait1Msec(500);
+}
+
+// Main Searching function
+void Searching() {
+    // First scan row
+    moveDistance(1.2);
+    wait1Msec(500);
+    scanSequence();
+
+    moveDistance(0.3);
+    scanSequence();
+
+    moveDistance(0.3);
+    scanSequence();
+
+    moveDistance(1.8, true);
+    wait1Msec(500);
+
+    // Second scan row
+    turnDegrees(10, true);
+    wait1Msec(500);
+    turnDegrees(30);
+    wait1Msec(500);
+    turnDegrees(40, true);
+    wait1Msec(500);
+    turnDegrees(20);
+    wait1Msec(500);
+
+    moveDistance(0.3);
+    scanSequence();
+
+    moveDistance(0.3);
+    scanSequence();
+
+    moveDistance(1.8, true);
+    wait1Msec(500);
+}
+
+task main() {
+    Searching();
+}
