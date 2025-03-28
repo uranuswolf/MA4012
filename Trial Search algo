@@ -49,12 +49,8 @@ int distanceToTicks(float distance) {
     return distance / distancePerTick;
 }
 
-//float degreesToRadians(float degrees) {
-    //return degrees * PI / 180.0;
-//}
-
 void moveDistance(float distance, bool backward = false) {
-    float realDistance = distance * 3.5;
+    float realDistance = distance * 3.5; //offset =3.5
     int targetTicks = distanceToTicks(realDistance);
 
     SensorValue[LEFT_ENCODER] = 0;
@@ -78,7 +74,7 @@ void moveDistance(float distance, bool backward = false) {
 }
 
 void turnDegrees(float degrees, bool right = false) {
-    float realDegrees = degrees * 2.5; //(offset)
+    float realDegrees = degrees * 2.5; // offset = 2.5
     float turningCircumference = 3.14159 * wheelBase;  // Full turning circle
     float arcLength = (realDegrees / 180.0) * turningCircumference; // One wheel arc distance
     
@@ -108,68 +104,89 @@ void turnDegrees(float degrees, bool right = false) {
 void checkBoundary() {
     if ((IR_A == 1 && IR_C == 1) && (IR_B == 0 && IR_D == 0)) {
         leftScanBoundary = true;
+        rightScanBoundary = false;  // Ensure this flag is reset
         writeDebugStreamLine("Left boundary detected");
-   else if ((IR_B == 1 && IR_D == 1) && (IR_A == 0 && IR_C == 0)) {
+    } 
+    else if ((IR_B == 1 && IR_D == 1) && (IR_A == 0 && IR_C == 0)) {
         rightScanBoundary = true;
+        leftScanBoundary = false;  // Ensure this flag is reset
         writeDebugStreamLine("Right boundary detected");
-    }
+    } 
 }
 
+
 // === Scan Sequence Pattern ===
-void scanSequence() {
-    turnDegrees(20);
+void scanSequenceLeft() {
+    turnDegrees(20); //scan 20 degree to the left 
     wait1Msec(1000);
-    turnDegrees(40, true);
+    turnDegrees(40, true); //scan 40 degree to the right 
     wait1Msec(1000);
-    turnDegrees(20);
+    turnDegrees(20); //scan 20 degree to the left 
     wait1Msec(1000);
 }
+
+
+void scanSequenceRight() {
+    turnDegrees(40); //scan 40 degree to the left 
+    wait1Msec(1000);
+    turnDegrees(20, true); //scan 20 degree to the right 
+    wait1Msec(1000);
+    turnDegrees(40); //scan 40 degree to the left 
+    wait1Msec(1000);
+}
+
 
 // === Left Side Search Algorithm ===
 void searchingAlgoLeft() {
-    moveDistance(1.2);
-    wait1Msec(1000);
-    scanSequence();
+    moveDistance(1.2);  //move a distance of 1.2 meter forward
+    wait1Msec(1000);  //wait first before scan
+    scanSequenceLeft(); //execute scan function 
 
-    moveDistance(0.3);
-    scanSequence();
+    moveDistance(0.3); //move a distance of 0.3 meter forward
+    wait1Msec(1000);  //wait first before scan
+    scanSequenceLeft(); //execute scan function
 
-    moveDistance(0.3);
-    scanSequence();
+    moveDistance(0.3); //move a distance of 0.3 meter forward
+    wait1Msec(1000);  //wait first before scan
+    scanSequenceLeft(); //execute scan function
 
-    moveDistance(1.8, true);
-    wait1Msec(1000);
+    moveDistance(1.8, true); //move a distance of 1.8 meter backward
+    wait1Msec(1000); //wait first before scan
 
-    turnDegrees(20, true);
-    wait1Msec(1000);
-    moveDistance(1.25);
-    wait1Msec(1000);
-    turnDegrees(40);
-    wait1Msec(1000);
-    turnDegrees(20, true);
-    wait1Msec(1000);
+    turnDegrees(20, true); //turn right 20 degrees 
+    wait1Msec(1000); //wait first before move
+    moveDistance(1.25); //move a distance of 1.25 meter forward
+    wait1Msec(1000); //wait first before turn
+    turnDegrees(40); //turn left 40 degrees 
+    wait1Msec(1000); //wait first before turn
+    turnDegrees(20, true); //turn right 20 degrees 
+    wait1Msec(1000);//wait first before move
 
-    moveDistance(0.3);
-    scanSequence();
+    moveDistance(0.3); //move a distance of 0.3 meter forward
+    wait1Msec(1000); //wait first before scan
+    scanSequenceLeft(); //execute scan function
 
-    moveDistance(0.3);
-    scanSequence();
+    moveDistance(0.3); //move a distance of 0.3 meter forward
+    wait1Msec(1000); //waitfirst before scan
+    scanSequenceLeft(); //execute scan function
 
-    moveDistance(1.8, true);
-    wait1Msec(1000);
+    moveDistance(1.8, true); //move a distance of 1.8 meter backward
+    wait1Msec(1000);//wait 
 }
 
 // === Right Side Search Algorithm (Mirrored) ===
 void searchingAlgoRight() {
     moveDistance(1.2);
     wait1Msec(1000);
-    scanSequence();
+    scanSequenceRight();
 
     moveDistance(0.3);
-    scanSequence();
+    wait1Msec(1000);
+    scanSequenceRight();
 
     moveDistance(0.3);
-    scanSequence();
+    wait1Msec(1000);
+    scanSequenceRight();
 
     moveDistance(1.8, true);
     wait1Msec(1000);
@@ -184,33 +201,33 @@ void searchingAlgoRight() {
     wait1Msec(1000);
 
     moveDistance(0.3);
-    scanSequence();
+    wait1Msec(1000);
+    scanSequenceRight();
 
     moveDistance(0.3);
-    scanSequence();
+    wait1Msec(1000);
+    scanSequenceRight();
 
     moveDistance(1.8, true);
     wait1Msec(1000);
 }
 
 // === Main Scanning Function ===
-void searchingAlgo() {
-    startTask(readIRTask);
-    while (1) {
-        checkBoundary();
-        
-        if (leftScanBoundary == true || rightScanBoundary == true) {
-            break;
-        }
 
-        if (boundaryleft == true) {
-            searchingAlgoLeft();
-        } 
-        else if (boundaryright == true) {
-            searchingAlgoRight();
-        }
-    }
-    
+void searchingAlgo() {
+    startTask(readIRTask);  // Start reading IR sensor values continuously
+    wait1Msec(200);  // Give some time for the IR sensor task to gather initial readings
+
+    checkBoundary();  // Check the boundary once
+
+    if (leftScanBoundary) {  // Trigger left search algorithm if left boundary detected
+    	  stopTask(readIRTask);
+        searchingAlgoLeft();
+    } 
+    else if (rightScanBoundary) {  // Trigger right search algorithm if right boundary detected
+    	  stopTask(readIRTask);
+        searchingAlgoRight();
+    } 
 }
 
 // === Main Entry Point ===
