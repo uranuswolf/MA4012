@@ -75,8 +75,8 @@ void scanSequence() {
     wait1Msec(500);
 }
 
-// Main Searching function
-void Searching() {
+// Main Searching Algorithm function
+void searchingAlgo() {
     // First scan row
     moveDistance(1.2);
     wait1Msec(500);
@@ -112,5 +112,5 @@ void Searching() {
 }
 
 task main() {
-    Searching();
+    searchingAlgo();
 }
