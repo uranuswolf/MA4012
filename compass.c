@@ -28,16 +28,46 @@ float compass(){
 }
 
 
-task main() {
-    while (true) {  // Continuously print the compass value
-        float heading = compass();  // Get the compass heading
-        writeDebugStreamLine("Compass Heading: %f", heading);  // Print it to debug stream
-        wait1Msec(500);  // Small delay to prevent spam
-    }
-}
 
 task check_current_heading(){
 	while(1){
 		int heading = compass();
 	}
 }
+
+void backBase() {
+    float heading = compass();  // Get current compass heading
+    float degree;
+    bool rightTurn;
+
+    // Determine shortest turn direction to 270° (North)
+    if (heading == 270) {
+        rightTurn = true;  // Already facing North, no need to turn
+        degree = 0;
+    } 
+    else if ((heading > 270 && heading <= 360) || (heading >= 0 && heading < 90)) {
+        // If facing between (270-360) or (0-90) → Turn right
+        rightTurn = true;
+        degree = (heading > 270) ? heading - 270 : 270 - heading;
+    } 
+    else {
+        // If facing between (90-270) → Turn left
+        rightTurn = false;
+        degree = 270 - heading;
+    }
+
+    // Turn towards 270° (North)
+    if (degree > 0) {
+        turnDegrees(degree, rightTurn);
+    }
+
+    // Move backward towards base
+    moveDistance(300, true);
+
+    // Check if the robot has reached the base using limit switches and IR sensors
+    if (compass() == 270 && (SensorValue[limitswitchLB] == 0 || SensorValue[limitswitchRB] == 0) 
+        && (SensorValue[IR_C] == 0 && SensorValue[IR_D] == 0)) { 
+        reachedBase = true;
+    }
+}
+
