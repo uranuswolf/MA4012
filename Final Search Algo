@@ -16,6 +16,23 @@ float wheelBase = 0.188;
 bool leftScanBoundary = false;
 bool rightScanBoundary = false;
 
+readIR(void){
+    while (true){
+        IR_A = SensorValue[IR_A]; 
+        IR_B = SensorValue[IR_B]; 
+        IR_C = SensorValue[IR_C]; 
+        IR_D = SensorValue[IR_D]; 
+    
+        // Print digital sensor value to debug stream
+        writeDebugStreamLine("IR_A: %d", IR_A_VALUE);
+        writeDebugStreamLine("IR_B: %d", IR_B_VALUE);
+        writeDebugStreamLine("IR_C: %d", IR_C_VALUE);
+        writeDebugStreamLine("IR_D: %d", IR_D_VALUE);
+
+    wait1Msec(50); // read IR values every 50ms
+}
+
+
 
 // === Helper Functions ===
 int distanceToTicks(float distance) {
