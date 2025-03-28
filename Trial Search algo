@@ -1,9 +1,9 @@
 #pragma config(Sensor, dgtl2, RIGHT_ENCODER, sensorQuadEncoder)
 #pragma config(Sensor, dgtl4, LEFT_ENCODER, sensorQuadEncoder)
-#pragma config(Sensor, dgtl5, IR_A_Sensor, sensorDigitalIn)
-#pragma config(Sensor, dgtl6, IR_B_Sensor, sensorDigitalIn)
-#pragma config(Sensor, dgtl7, IR_C_Sensor, sensorDigitalIn)
-#pragma config(Sensor, dgtl8, IR_D_Sensor, sensorDigitalIn)
+#pragma config(Sensor, dgtl6, IR_A_Sensor, sensorDigitalIn)
+#pragma config(Sensor, dgtl7, IR_B_Sensor, sensorDigitalIn)
+#pragma config(Sensor, dgtl8, IR_C_Sensor, sensorDigitalIn)
+#pragma config(Sensor, dgtl9, IR_D_Sensor, sensorDigitalIn)
 #pragma config(Motor, port3, motorLeft, tmotorVex393_MC29, openLoop)
 #pragma config(Motor, port4, motorRight, tmotorVex393_MC29, openLoop)
 
