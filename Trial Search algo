@@ -202,11 +202,16 @@ void searchingAlgo() {
     startTask(readIRTask);
     wait1Msec(200);  // Let sensors stabilize
 
+    while (1) {
     checkLeftScanBoundary();
     checkRightScanBoundary();
+}
+    if(leftScanBoundary ==true && rightScanBoundary == false) {
+        searchingAlgoLeft();}
+    else if(leftScanBoundary ==false && rightScanBoundary == true) {
+        searchingAlgoRight();
 
-  
-    if (!leftScanBoundary && rightScanBoundary) {
+    //if (!leftScanBoundary && rightScanBoundary) {
         searchingAlgoRight();}
     //}else if (leftScanBoundary && !rightScanBoundary) {
         //searchingAlgoLeft();
