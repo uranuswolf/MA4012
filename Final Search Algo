@@ -22,20 +22,7 @@ int IR_B = 0;
 int IR_C = 0;
 int IR_D = 0;
 
-// === IR Sensor Task (Simulated values) ===
-task readIRTask() {
-    while (true) {
-        // Simulate left boundary detection:
-        IR_A = 1; IR_C = 1;
-        IR_B = 0; IR_D = 0;
-
-        // Simulate right boundary instead by commenting above and using:
-        // IR_A = 0; IR_C = 0;
-        // IR_B = 1; IR_D = 1;
-
-        wait1Msec(100);
-    }
-}
+startTask{readIRTask}
 
 // === Helper Functions ===
 int distanceToTicks(float distance) {
