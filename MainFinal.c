@@ -133,6 +133,7 @@ void returnPhase() {
         startTask(scanBoundaryTask);  // Start the scan boundary task
         startTask(scanObstacleTask);  // Start the scan Obstacle task
         startTask(returnToBaseTask);  // Start the return to base task
+        startTask(releaseExtraBallsTask);  // Start the release extra balls task
         
          // Keep checking for boundary and obstacles and if robot successfully return to base in this phase, if not, keep doing the above 3 tasks concurrently
         while(true) {
@@ -141,28 +142,34 @@ void returnPhase() {
                 stopTask(scanBoundaryTask);  // Stop the scan boundary task
                 stopTask(scanObstacleTask);  // Stop the scan obstacle task
                 stopTask(returnToBaseTask); // Stop the return to base task
+                stopTask(releaseExtraBallsTask);  // Stop the release extra balls task
                 handleBoundary();  // Handle boundary if the robot reaches the boundary during search
                 //resume normal tasks in the return phase
                 isBoundary = false;  // Reset the flag
                 startTask(scanBoundaryTask);  // Start the scan boundary task
                 startTask(scanObstacleTask);  // Start the scan Obstacle task
                 startTask(returnToBaseTask);  // Start the return to base task
+                startTask(releaseExtraBallsTask);  // Start the release extra balls task
               }
         
             else if (isObstacle) { //if an obstacle is detected
                 stopTask(scanBoundaryTask);  // Stop the scan boundary task
                 stopTask(scanObstacleTask);  // Stop the scan obstacle task
+                stopTask(returnToBaseTask); // Stop the return to base task
+                stopTask(releaseExtraBallsTask);  // Stop the release extra balls task
                 handleObstacle();  // Handle the obstacle 
                 //resume normal tasks in the return phase
                 isObstacle = false;  // Reset the flag
                 startTask(scanBoundaryTask);  // Start the scan boundary task
                 startTask(scanObstacleTask);  // Start the scan Obstacle task
                 startTask(returnToBaseTask);  // Start the return to base task
+                startTask(releaseExtraBallsTask);  // Start the release extra balls task
               }
             else if (reachedBase) {  // Check if robot has reached the base
                 stopTask(scanBoundaryTask);  // Stop the scan boundary task
                 stopTask(scanObstacleTask);  // Stop the scan obstacle task
                 stopTask(returnToBaseTask);  // stop the return to base task
+                stopTask(releaseExtraBallsTask);  // Stop the release extra balls task
                 currentState = DELIVER;  // Change to deliver phase when robot reaches the base
                 reachedBase = false;  // Reset the flag
                 break;  // Exit the while loop
@@ -445,6 +452,9 @@ task readIRTask() {
   } 
 task readDistanceSensorTask() {
     readDistanceSensor();  // Read distance sensor values continuously
+  }
+task releaseExtraBallsTask() {
+    frontRollerOutput();  // Release extra balls
   }
 
 
