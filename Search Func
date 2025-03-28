@@ -96,9 +96,7 @@ void searchingAlgo() {
     wait1Msec(500);
     moveDistance(1.25);
     wait1Msec(500);
-    turnDegrees(30);
-    wait1Msec(500);
-    turnDegrees(40, true);
+    turnDegrees(40);
     wait1Msec(500);
     turnDegrees(20);
     wait1Msec(500);
