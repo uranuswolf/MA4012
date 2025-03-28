@@ -207,4 +207,9 @@ void searchingAlgo() {
     } else if (rightScanBoundary) {
         searchingAlgoRight();
     }
+
+// === Main Entry Point ===
+task main() {
+    searchingAlgo();
+}
 }
