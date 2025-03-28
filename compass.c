@@ -38,6 +38,7 @@ task main() {
 
 task check_current_heading(){
 	while(1){
-		int current_orientation = compass();
+		int heading = compass();
 	}
+	return heading;
 }
