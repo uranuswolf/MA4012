@@ -147,7 +147,7 @@ void searchingAlgoLeft() {
     wait1Msec(1000);
     turnDegrees(40);
     wait1Msec(1000);
-    turnDegrees(20);
+    turnDegrees(20, true);
     wait1Msec(1000);
 
     moveDistance(0.3);
@@ -181,7 +181,7 @@ void searchingAlgoRight() {
     wait1Msec(1000);
     turnDegrees(40, true);
     wait1Msec(1000);
-    turnDegrees(20, true);
+    turnDegrees(20);
     wait1Msec(1000);
 
     moveDistance(0.3);
