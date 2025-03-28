@@ -35,3 +35,9 @@ task main() {
         wait1Msec(500);  // Small delay to prevent spam
     }
 }
+
+task check_current_heading(){
+	while(1){
+		int current_orientation = compass();
+	}
+}
