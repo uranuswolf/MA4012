@@ -189,6 +189,27 @@ void deliverPhase() {
       }
 
 // Put all the functions here 
+
+frontRollerIntake(){
+    FRONT_ROLLER = -speed; 
+}       
+
+frontRollerStop(){
+    FRONT_ROLLER = 0; 
+}
+
+frontRollerOutput(){
+    FRONT_ROLLER = speed; //REVERSE DIRECTION TO RELEASE EXTRA BALLS 
+}     
+
+FlapperPush(){
+  BACK_ROLLER = -speed; 
+}       
+
+FlapperStop(){
+  BACK_ROLLER = 0; 
+}
+
 int compass(){
 	int num;
 	num = SensorValue[compass_MSB]*pow(2,3) + SensorValue[compass_Bit2]*pow(2,2) + SensorValue[compass_Bit3]*2 + SensorValue[compass_LSB];
@@ -323,8 +344,13 @@ deliver(){
 }
 
 pickUpBall(){
-  FRONT_ROLLER = -speed; //**from ACW from LSV
-}       // Pick up the ball, yuwei work on it tmr 
+  frontRollerIntake();
+  while (true){
+    if (isBallPicked) {
+      frontRollerStop(); //STOP THE FRONT ROLLER 
+      break;  // Exit the while loop  
+  } 
+}       
 
 moveTowardsBall(){
 }  // Move towards the ball
@@ -420,7 +446,6 @@ task readIRTask() {
 task readDistanceSensorTask() {
     readDistanceSensor();  // Read distance sensor values continuously
   }
-
 
 
 void task main() {
