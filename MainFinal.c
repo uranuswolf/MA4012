@@ -334,12 +334,12 @@ scanBall(){
 }
 
 returnToBase(){
+    startTask(check_current_heading); // Start the reading of the compass heading
     // Implement the return to base algorithm here
     // use simple movement function + compass
-	while(1){
-		int heading = compass();
-		 wait1Msec(500);  // Small delay to prevent spam
-	}
+    float degree = abs(270 - heading);
+    turnDegrees(degree, bool right = true); //turn
+    moveDistance(300, bool backward = true);
     if(heading == 270 && (limitswitchLB == 0 || limitswitchRB == 0) && (IR_C == 0 && IR_D == 0)//condition to check if the robot has reached the base, make use of the limit switches and other indicators 
     return reachedBase = true;
 }
@@ -457,6 +457,11 @@ task releaseExtraBallsTask() {
     frontRollerOutput();  // Release extra balls
   }
 
+task check_current_heading(){
+	while(1){
+		int heading = compass();
+	}
+}
 
 void task main() {
     while (true) {
