@@ -16,11 +16,6 @@ float wheelBase = 0.188;
 bool leftScanBoundary = false;
 bool rightScanBoundary = false;
 
-// === Simulated/Real IR sensor values (set by your readIRTask) ===
-int IR_A = 0;
-int IR_B = 0;
-int IR_C = 0;
-int IR_D = 0;
 
 // === Helper Functions ===
 int distanceToTicks(float distance) {
