@@ -1,4 +1,4 @@
-// pragma config ## WORK ON THIS TMR 
+// ================================================================== pragma configuration ==================================================================
 #pragma config(Sensor, in1,    sharpTC,        sensorAnalog)
 #pragma config(Sensor, in2,    sharpBL,        sensorAnalog)
 #pragma config(Sensor, in3,    sharpBC,        sensorAnalog)
@@ -19,11 +19,58 @@
 #pragma config(Motor,  port3,  motorLeft,      tmotorVex393_MC29, openLoop)
 #pragma config(Motor,  port4,  motorRight,     tmotorVex393_MC29, openLoop)
 #pragma config(Motor, port9, FRONT_ROLLER, tmotorVex393_MC29, openLoop)
-#pragma config(Motor, port10, FLAPPER, tmotorVex393_MC29, openLoop)
+#pragma config(Motor, port10, BACK_ROLLER, tmotorVex393_MC29, openLoop)
+
+
+// ================================================================== Function prototypes ==================================================================
+void moveDistance(float distance, bool backward = false); 
+void turnDegrees(float degrees, bool right = false);
+int distanceToTicks(float distance);
+void searchPhase(void);
+void collectPhase(void);
+void returnPhase(void);
+void deliverPhase(void);
+void scanBall(void);
+void scanBoundary(void);
+void scanObstacle(void);
+void returnToBase(void);
+void deliver(void);
+void pickUpBall(void);
+void moveTowardsBall(void);
+void handleBoundary(void);
+void handleObstacle(void);
+void readIR(void);
+void readDistanceSensor(void);
+void scanSequenceLeft(void);
+void scanSequenceRight(void);
+void checkBoundary(void);
+void frontRollerIntake(void);
+void frontRollerStop(void);
+void frontRollerOutput(void);
+void FlapperPush(void);
+void FlapperStop(void);
+int compass(void);
+void readlimitswitch(void);
+void searchingAlgoLeft(void);
+void searchingAlgoRight(void); 
+void searchingAlgo(void);
+task searchAlgoTask(void);
+task scanBallTask(void);
+task scanBoundaryTask(void);
+task scanObstacleTask(void);
+task returnToBaseTask(void);
+task deliverTask(void);
+task readIRTask(void);
+task readDistanceSensorTask(void);
+task releaseExtraBallsTask(void);
+task check_current_heading(void);
+task moveTowardsBallTask(void);
+task pickUpBallTask(void);
+// **************************Khirdir please update the function prototypes as needed**************************
 
 
 
-// Define states
+// ================================================================== Define Robot states  ==================================================================
 typedef enum {
     SEARCH,
     COLLECT,
@@ -32,36 +79,39 @@ typedef enum {
   } RobotState;
 
 
-// Define MACROS
+// ================================================================== Define MACROS ==================================================================
 #define PI 3.14159265359
 
-//Global variables 
+// ================================================================== Global variables ==================================================================
 RobotState currentState = SEARCH;  // Start with the 'Search' phase
-int IR_A // IR sensor A = 0 or 1, 0 means at boundary, 1 means not at boundary
-int IR_B // IR sensor B = 0 or 1
-int IR_C // IR sensor C = 0 or 1
-int IR_D // IR sensor D = 0 or 1
+int IR_A = 1; // IR sensor A = 0 or 1, 0 means at boundary, 1 means not at boundary
+int IR_B = 1;// IR sensor B = 0 or 1
+int IR_C = 1;// IR sensor C = 0 or 1
+int IR_D = 1;// IR sensor D = 0 or 1
 bool isBoundary = false;  // Flag to indicate if the robot is at the boundary
 bool isBall = false;  // Flag to indicate if the ball is detected
 bool isObstacle = false;  // Flag to indicate if an obstacle is detected
 bool isBallPicked = false;  // Flag to indicate if the ball is picked up
 bool reachedBase = false;  // Flag to indicate if the robot has reached the base
 bool isDelivered = false;  // Flag to indicate if the ball is delivered
-
-// Define constants
-int basePower = 50;  // Power level for the base motor
-float wheelDiameter = 0.06985; // meters
-float wheelCircumference = wheelDiameter * PI; // meters
-int ticksPerRevolution = 90; // encoder ticks per revolution
-float distancePerTick = wheelCircumference / ticksPerRevolution; // meters per tick
-float wheelBase = 0.188; // distance between wheels (meters)
-int rollerSpeed = 127; // speed of the roller motor
+bool leftScanBoundary = false; //Flag to indicate if the left boundary is detected
+bool rightScanBoundary = false; //Flag to indicate if the right boundary is detected
+// **************************Khirdir please update the Global variables as needed**************************
 
 
+// ================================================================== Define constants ==================================================================
+const int basePower = 50;  // Power level for the base motor
+const float wheelDiameter = 0.06985; // meters
+const float wheelCircumference = wheelDiameter * PI; // meters
+const int ticksPerRevolution = 90; // encoder ticks per revolution
+const float distancePerTick = wheelCircumference / ticksPerRevolution; // meters per tick
+const float wheelBase = 0.188; // distance between wheels (meters)
+const int rollerSpeed = 127; // speed of the roller motor
+// **************************Khirdir please update the constants as needed**************************
 
 
-// Phase functions with subfunctions 
-void searchPhase() {
+// ================================================================== Phase functions ==================================================================
+void searchPhase(void) {
     startTask(searchAlgoTask);  // Start the search algorithm task
     startTask(scanBallTask);    // Start the scan ball task
     startTask(scanBoundaryTask);  // Start the scan boundary task
@@ -73,6 +123,8 @@ void searchPhase() {
         currentState = COLLECT;  // Change to collect phase when the ball is detected
         stopTask(searchAlgoTask); // Stop the search algorithm task
         stopTask(scanBallTask);   // Stop the scan ball task
+        stopTask(scanBoundaryTask);  // Start the scan boundary task
+        stopTask(scanObstacleTask);  // Start the scan Obstacle task
         isBall = false;  // Reset the flag
         break;  // Exit the while loop
       }
@@ -81,7 +133,9 @@ void searchPhase() {
         stopTask(scanBallTask);  // Stop the scan obstacle task
         stopTask(scanBoundaryTask);  // Stop the scan boundary task
         stopTask(scanObstacleTask);  // Stop the scan obstacle task
+        
         handleBoundary();  // Handle boundary if the robot reaches the boundary during search
+
         //resume normal tasks in the search phase
         isBoundary = false;  // Reset the flag
         startTask(searchAlgoTask);  // Start the search algorithm task
@@ -96,7 +150,9 @@ void searchPhase() {
         stopTask(scanBallTask);  // Stop the scan obstacle task
         stopTask(scanBoundaryTask);  // Stop the scan boundary task
         stopTask(scanObstacleTask);  // Stop the scan obstacle task
+
         handleObstacle();  // Handle the obstacle 
+
         //resume normal tasks in the search phase
         isObstacle = false;  // Reset the flag
         startTask(searchAlgoTask);  // Start the search algorithm task
@@ -105,16 +161,16 @@ void searchPhase() {
         startTask(scanObstacleTask);  // Start the scan Obstacle task
       } 
 
-      wait1Msec(50);  // Small delay to prevent locking up the CPU, represent how often is the checking
+      wait1Msec(100);  // Small delay to prevent locking up the CPU, represent how often is the checking
 
     }
   }
 
-void collectPhase() {
+void collectPhase(void) {
     startTask(scanBoundaryTask);  // Start the scan boundary task
     startTask(scanObstacleTask);  // Start the scan Obstacle task
-    moveTowardsBall();  // Move towards the ball
-    pickUpBall();       // Pick up the ball
+    startTask(moveTowardsBallTask);  // Start the move towards ball task
+    startTask(pickUpBallTask);       // Start the pick up ball task, means the robot can pickup any ball as it moves towards the target ball
     
     // Keep checking for boundary and obstacles and if ball is picked in this phase, if not, keep doing the above 2 tasks concurrently
     while(true) {
@@ -122,39 +178,53 @@ void collectPhase() {
         if (isBoundary) {
             stopTask(scanBoundaryTask);  // Stop the scan boundary task
             stopTask(scanObstacleTask);  // Stop the scan obstacle task
+            stopTask(moveTowardsBallTask);  // Stop the move towards ball task
+            stopTask(pickUpBallTask);       // Stop the pick up ball task
+
             handleBoundary();  // Handle boundary if the robot reaches the boundary during search
+
              //resume normal tasks in the collect phase
             isBoundary = false;  // Reset the flag
             startTask(scanBoundaryTask);  // Start the scan boundary task
             startTask(scanObstacleTask);  // Start the scan Obstacle task
+            startTask(moveTowardsBallTask);  // Start the move towards ball task
+            startTask(pickUpBallTask);       // Start the pick up ball task
           }
     
         else if (isObstacle) { //if an obstacle is detected
             stopTask(scanBoundaryTask);  // Stop the scan boundary task
             stopTask(scanObstacleTask);  // Stop the scan obstacle task
+            stopTask(moveTowardsBallTask);  // Stop the move towards ball task
+            stopTask(pickUpBallTask);       // Stop the pick up ball task
+            
             handleObstacle();  // Handle the obstacle
+
             //resume normal tasks in the collect phase
             isObstacle = false;  // Reset the flag
             startTask(scanBoundaryTask);  // Start the scan boundary task
             startTask(scanObstacleTask);  // Start the scan Obstacle task 
+            startTask(moveTowardsBallTask);  // Start the move towards ball task
+            startTask(pickUpBallTask);      // Start the pick up ball task
           }
         else if (isBallPicked) {  // Check if the ball has been successfully picked up
             stopTask(scanBoundaryTask);  // Stop the scan boundary task
             stopTask(scanObstacleTask);  // Stop the scan obstacle task
+            stopTask(moveTowardsBallTask);  // Stop the move towards ball task
+            stopTask(pickUpBallTask);       // Stop the pick up ball task
             currentState = RETURN;  // Change to return phase when the ball is picked
             isBallPicked = false;  // Reset the flag
             break;  // Exit the while loop
         }
 
-        wait1Msec(50);  // Small delay to prevent locking up the CPU, represent how often is the checking 
+        wait1Msec(100);  // Small delay to prevent locking up the CPU, represent how often is the checking 
     }
 }
 
-void returnPhase() {
+void returnPhase(void) {
         startTask(scanBoundaryTask);  // Start the scan boundary task
         startTask(scanObstacleTask);  // Start the scan Obstacle task
         startTask(returnToBaseTask);  // Start the return to base task
-        startTask(releaseExtraBallsTask);  // Start the release extra balls task
+        startTask(releaseExtraBallsTask);  // Start the release extra balls task, continuously, so prevent ball from rolling inside the robot while robot is moving back to base
         
          // Keep checking for boundary and obstacles and if robot successfully return to base in this phase, if not, keep doing the above 3 tasks concurrently
         while(true) {
@@ -164,7 +234,9 @@ void returnPhase() {
                 stopTask(scanObstacleTask);  // Stop the scan obstacle task
                 stopTask(returnToBaseTask); // Stop the return to base task
                 stopTask(releaseExtraBallsTask);  // Stop the release extra balls task
+
                 handleBoundary();  // Handle boundary if the robot reaches the boundary during search
+
                 //resume normal tasks in the return phase
                 isBoundary = false;  // Reset the flag
                 startTask(scanBoundaryTask);  // Start the scan boundary task
@@ -178,7 +250,9 @@ void returnPhase() {
                 stopTask(scanObstacleTask);  // Stop the scan obstacle task
                 stopTask(returnToBaseTask); // Stop the return to base task
                 stopTask(releaseExtraBallsTask);  // Stop the release extra balls task
+
                 handleObstacle();  // Handle the obstacle 
+
                 //resume normal tasks in the return phase
                 isObstacle = false;  // Reset the flag
                 startTask(scanBoundaryTask);  // Start the scan boundary task
@@ -196,49 +270,50 @@ void returnPhase() {
                 break;  // Exit the while loop
             }
     
-            wait1Msec(50);  // Small delay to prevent locking up the CPU, represent how often is the checking 
+            wait1Msec(100);  // Small delay to prevent locking up the CPU, represent how often is the checking 
         }
       
       }
 
-void deliverPhase() {
-        startTask(deliverTask);  // Start the scan boundary task
+void deliverPhase(void) {
+        startTask(deliverTask);  // Start deliver task
         
         while(true){
-            if (isDelivered) {  // Check if the ball has been successfully delivered
-                stopTask(deliverTask);  // Stop the deliver task
+            if (isDelivered) {  // Keep checking if the ball has been successfully delivered, means top limit switch is no longer triggered
+                stopTask(deliverTask);  // Stop the deliver task if it has delivered
                 currentState = SEARCH;  // Change to search phase after delivery
                 isDelivered = false;  // Reset the flag
                 break;  // Exit the while loop
             }
-            wait1Msec(50);  // Small delay to prevent locking up the CPU, represent how often is the checking 
+            wait1Msec(100);  // Small delay to prevent locking up the CPU, represent how often is the checking 
         }
        
       }
 
-// Put all the functions here 
+// ================================================================== Put all the functions here  ==================================================================
 
-frontRollerIntake(){
-    FRONT_ROLLER = -speed; 
+// **************************Khirdir please update the functions as needed**************************
+void frontRollerIntake(void){
+  motor[FRONT_ROLLER] = -rollerSpeed; 
 }       
 
-frontRollerStop(){
-    FRONT_ROLLER = 0; 
+void frontRollerStop(void){
+  motor[FRONT_ROLLER] = 0; 
 }
 
-frontRollerOutput(){
-    FRONT_ROLLER = speed; //REVERSE DIRECTION TO RELEASE EXTRA BALLS 
+void frontRollerOutput(void){
+  motor[FRONT_ROLLER] = rollerSpeed; //REVERSE DIRECTION TO RELEASE EXTRA BALLS 
 }     
 
-FlapperPush(){
-  BACK_ROLLER = -speed; 
+void FlapperPush(void){
+  motor[BACK_ROLLER] = -rollerSpeed; 
 }       
 
-FlapperStop(){
-  BACK_ROLLER = 0; 
+void FlapperStop(void){
+  motor[BACK_ROLLER] = 0; 
 }
 
-int compass(){
+int compass(void){
 	int num;
 	num = SensorValue[compass_MSB]*pow(2,3) + SensorValue[compass_Bit2]*pow(2,2) + SensorValue[compass_Bit3]*2 + SensorValue[compass_LSB];
 	switch(num){
@@ -262,7 +337,7 @@ int compass(){
 	return -1;
 }
 
-readIR(void){
+void readIR(void){
     while (true){
         IR_A = SensorValue[IR_A]; 
         IR_B = SensorValue[IR_B]; 
@@ -270,15 +345,16 @@ readIR(void){
         IR_D = SensorValue[IR_D]; 
     
         // Print digital sensor value to debug stream
-        writeDebugStreamLine("IR_A: %d", IR_A_VALUE);
-        writeDebugStreamLine("IR_B: %d", IR_B_VALUE);
-        writeDebugStreamLine("IR_C: %d", IR_C_VALUE);
-        writeDebugStreamLine("IR_D: %d", IR_D_VALUE);
+        writeDebugStreamLine("IR_A: %d", IR_A);
+        writeDebugStreamLine("IR_B: %d", IR_B);
+        writeDebugStreamLine("IR_C: %d", IR_C);
+        writeDebugStreamLine("IR_D: %d", IR_D);
 
     wait1Msec(50); // read IR values every 50ms
 }
+}
 
-readlimitswitch(void){
+void readlimitswitch(void){
     while (true){
         limitswitchLB = SensorValue[limitswitchLB]; 
         limitswitchRB = SensorValue[limitswitchRB]; 
@@ -293,8 +369,9 @@ readlimitswitch(void){
 
     wait1Msec(50); // read IR values every 50ms
 }
+}
 
-scanBoundary(void){
+void scanBoundary(void){
     startTask(readIRTask);  // Start the read IR task 
         // Check if any two IR sensors are 0
         if ((IR_A == 0 && IR_B == 0) || (IR_A == 0 && IR_C == 0) || (IR_A == 0 && IR_D == 0) || 
@@ -303,7 +380,7 @@ scanBoundary(void){
         }
 }
 
-handleBoundary(IR_A, IR_B, IR_C, IR_D){
+void handleBoundary(IR_A, IR_B, IR_C, IR_D){
 
     int IR_State = 0;
 
@@ -346,80 +423,82 @@ handleBoundary(IR_A, IR_B, IR_C, IR_D){
     
 }
 
-readDistanceSensor(void){
-    // Implement logic here to read the distance sensor
+void readDistanceSensor(){
+    // Implement logic here to read the distance sensor 
+    // ****************************Khirdir please update this function as needed*******************************
 }
 
-scanObstacle(){
+void scanObstacle(){
     startTask(readDistanceSensor);  // Start the read IR task 
     // Implement logic here
-    // return isObstacle = true if an obstacle is detected
+    // ****************************Khirdir please update this function as needed*******************************
+    // isObstacle = true if an obstacle is detected
 }
 
-handleObstacle(){
+void handleObstacle(){
     // Implement logic here to handle the obstacle
+    // ****************************Khirdir please update this function as needed*******************************
 }
 
-searchingAlgo(){
-    // Implement the search algorithm here
-}
-
-scanBall(){
+void scanBall(){
     startTask(readDistanceSensor);  // Start the read IR task 
     // Implement logic here to scan for the ball
-    // return isBall = true if the ball is detected
+    // ****************************Khirdir please update this function as needed*******************************
+    //  isBall = true if the ball is detected
 }
 
-returnToBase(){
+void returnToBase(void){
     startTask(check_current_heading); // Start the reading of the compass heading
     // Implement the return to base algorithm here
     // use simple movement function + compass
     float degree = abs(270 - heading);
     turnDegrees(degree, bool right = true); //turn
     moveDistance(300, bool backward = true);
-    if(heading == 270 && (limitswitchLB == 0 || limitswitchRB == 0) && (IR_C == 0 && IR_D == 0)//condition to check if the robot has reached the base, make use of the limit switches and other indicators 
-    return reachedBase = true;
+    if(heading == 270 && (limitswitchLB == 0 || limitswitchRB == 0) && (IR_C == 0 && IR_D == 0){//condition to check if the robot has reached the base, make use of the limit switches and other indicators 
+    reachedBase = true;
+}
 }
 
-deliver(){
+void deliver(){
     // Implement the deliver algorithm here
     if //condition to check if the ball has been delivered, make use of the limit switches and other indicators
+    // ****************************Yu Shun and KC please update this function as needed*******************************
     return isDelivered = true;
 }
 
-pickUpBall(){
-  frontRollerIntake();
-  while (true){
+void pickUpBall(void){
+  frontRollerIntake(); //activate front roller to pickup ball
+  while (true){ //keep checking for the top limit swtich
     if (isBallPicked) {
       frontRollerStop(); //STOP THE FRONT ROLLER 
       break;  // Exit the while loop  
   } 
+}
 }       
 
-moveTowardsBall(){
-}  // Move towards the ball
+void moveTowardsBall(void){  ,
+   //implement logic to move towards the ball after detecting it
+   // ****************************Khirdir please update this function as needed*******************************
+}  
 
 // Convert desired distance in meters to encoder ticks
 int distanceToTicks(float distance) {
     return distance / distancePerTick;
 }
-// Convert degrees to Radians 
-float degreesToRadians(float degrees) {
-    return degrees * PI / 180.0;
-}
 
 // Move forward or backward by distance (in meters)
 void moveDistance(float distance, bool backward = false) {
-	float realDistance = distance *10; 
-    int targetTicks = distanceToTicks(realDistance);
-    SensorValue[LEFT_ENCODER] = 0;
-    SensorValue[RIGHT_ENCODER] = 0;
+	float realDistance = distance * 3.5; //offset = 3.5
+  int targetTicks = distanceToTicks(realDistance);
+
+  SensorValue[LEFT_ENCODER] = 0;
+  SensorValue[RIGHT_ENCODER] = 0;
 
     if (backward) {
-        motor[motorLeft] = basePower;
+        motor[motorLeft] = 1.28 * basePower; //offset =1.28
         motor[motorRight] = -basePower;
     } else {
-        motor[motorLeft] = -basePower;
+        motor[motorLeft] = -1.28 * basePower;
         motor[motorRight] = basePower;
     }
 
@@ -433,13 +512,9 @@ void moveDistance(float distance, bool backward = false) {
 
 // Turn left or right by angle (in degrees)
 void turnDegrees(float degrees, bool right = false) {
-    //float realDegrees = degrees * 2.5;
-    //float turningCircumference = 3.14159 * wheelBase;  // Full turning circle
-    //float arcLength = (realDegrees / 180.0) * turningCircumference; // One wheel arc distance
-
-    //Arc length formula : ArcLength=r*theta, where r is in radians 
-    float angleRadian = degreesToRadians(degrees); 
-    float arcLength = angleRadian * (wheelBase/2);
+    float realDegrees = degrees * 2.5; //offset is 2.5
+    float turningCircumference = PI * wheelBase;  // Full turning circle
+    float arcLength = (realDegrees / 180.0) * turningCircumference; // One wheel arc distance
 	
     int targetTicks = distanceToTicks(arcLength);
 
@@ -462,43 +537,177 @@ void turnDegrees(float degrees, bool right = false) {
     motor[motorRight] = 0;
 }
 
-// Concurrent tasks for required in different phases
-task searchAlgoTask() {
+void checkBoundary(void) {
+  if ((IR_A == 1 && IR_C == 1) && (IR_B == 0 && IR_D == 0)) {
+      leftScanBoundary = true;
+      rightScanBoundary = false;  // Ensure this flag is reset
+      writeDebugStreamLine("Left boundary detected");
+  } 
+  else if ((IR_B == 1 && IR_D == 1) && (IR_A == 0 && IR_C == 0)) {
+      rightScanBoundary = true;
+      leftScanBoundary = false;  // Ensure this flag is reset
+      writeDebugStreamLine("Right boundary detected");
+  } 
+}
+
+
+void scanSequenceLeft(void) {
+  turnDegrees(20); //scan 20 degree to the left 
+  wait1Msec(1000);
+  turnDegrees(40, true); //scan 40 degree to the right 
+  wait1Msec(1000);
+  turnDegrees(20); //scan 20 degree to the left 
+  wait1Msec(1000);
+}
+
+void scanSequenceRight(void) {
+  turnDegrees(40); //scan 40 degree to the left 
+  wait1Msec(1000);
+  turnDegrees(20, true); //scan 20 degree to the right 
+  wait1Msec(1000);
+  turnDegrees(40); //scan 40 degree to the left 
+  wait1Msec(1000);
+}
+
+
+void searchingAlgoLeft(void) {
+  moveDistance(1.2);  //move a distance of 1.2 meter forward
+  wait1Msec(1000);  //wait first before scan
+  scanSequenceLeft(); //execute scan function 
+
+  moveDistance(0.3); //move a distance of 0.3 meter forward
+  wait1Msec(1000);  //wait first before scan
+  scanSequenceLeft(); //execute scan function
+
+  moveDistance(0.3); //move a distance of 0.3 meter forward
+  wait1Msec(1000);  //wait first before scan
+  scanSequenceLeft(); //execute scan function
+
+  moveDistance(1.8, true); //move a distance of 1.8 meter backward
+  wait1Msec(1000); //wait first before scan
+
+  turnDegrees(20, true); //turn right 20 degrees 
+  wait1Msec(1000); //wait first before move
+  moveDistance(1.25); //move a distance of 1.25 meter forward
+  wait1Msec(1000); //wait first before turn
+  turnDegrees(40); //turn left 40 degrees 
+  wait1Msec(1000); //wait first before turn
+  turnDegrees(20, true); //turn right 20 degrees 
+  wait1Msec(1000);//wait first before move
+
+  moveDistance(0.3); //move a distance of 0.3 meter forward
+  wait1Msec(1000); //wait first before scan
+  scanSequenceLeft(); //execute scan function
+
+  moveDistance(0.3); //move a distance of 0.3 meter forward
+  wait1Msec(1000); //waitfirst before scan
+  scanSequenceLeft(); //execute scan function
+
+  moveDistance(1.8, true); //move a distance of 1.8 meter backward
+  wait1Msec(1000);//wait 
+}
+
+
+void searchingAlgoRight(void) {
+  moveDistance(1.2);
+  wait1Msec(1000);
+  scanSequenceRight();
+
+  moveDistance(0.3);
+  wait1Msec(1000);
+  scanSequenceRight();
+
+  moveDistance(0.3);
+  wait1Msec(1000);
+  scanSequenceRight();
+
+  moveDistance(1.8, true);
+  wait1Msec(1000);
+
+  turnDegrees(20); // turn left
+  wait1Msec(1000);
+  moveDistance(1.25);
+  wait1Msec(1000);
+  turnDegrees(40, true);
+  wait1Msec(1000);
+  turnDegrees(20);
+  wait1Msec(1000);
+
+  moveDistance(0.3);
+  wait1Msec(1000);
+  scanSequenceRight();
+
+  moveDistance(0.3);
+  wait1Msec(1000);
+  scanSequenceRight();
+
+  moveDistance(1.8, true);
+  wait1Msec(1000);
+}
+
+void searchingAlgo(void) {
+  startTask(readIRTask);  // Start reading IR sensor values continuously
+  wait1Msec(200);  // Give some time for the IR sensor task to gather initial readings
+
+  checkBoundary();  // Check the boundary once
+
+  if (leftScanBoundary) {  // Trigger left search algorithm if left boundary detected
+      stopTask(readIRTask);
+      searchingAlgoLeft();
+  } 
+  else if (rightScanBoundary) {  // Trigger right search algorithm if right boundary detected
+      stopTask(readIRTask);
+      searchingAlgoRight();
+  } 
+}
+
+// ==================================================================  Concurrent tasks for required in different phases ==================================================================
+// **************************Khirdir please update the concurrent tasks as needed**************************
+task searchAlgoTask(void) {
     searchingAlgo();  // Execute the search algorithm during the search phase 
   }
   
-task scanBallTask() {
+task scanBallTask(void) {
     scanBall();  // Constantly scan for the ball during the search phase
   }
 
-task scanBoundaryTask() {
+task scanBoundaryTask(void) {
     scanBoundary();  // Constantly scan for the boundary during all the phase
   }
 
-task scanObstacleTask() {
+task scanObstacleTask(void) {
     scanObstacle();  // Constantly scan for obstacles during the all phase
   }
-task returnToBaseTask() {
+task returnToBaseTask(void) {
     returnToBase();  // Execute the return to base algorithm during the return phase
   }
-task deliverTask() {
+task deliverTask(void) {
     deliver();  // Execute the deliver algorithm during the deliver phase
   }
-task readIRTask() {
+task readIRTask(void) {
     readIR();  // Read IR sensor values continuously
   } 
-task readDistanceSensorTask() {
+task readDistanceSensorTask(void) {
     readDistanceSensor();  // Read distance sensor values continuously
   }
-task releaseExtraBallsTask() {
+task releaseExtraBallsTask(void) {
     frontRollerOutput();  // Release extra balls
   }
 
-task check_current_heading(){
+task check_current_heading(void){
 	while(1){
 		int heading = compass();
 	}
 }
+task moveTowardsBallTask(void) {
+  moveTowardsBall();  
+}
+
+task pickUpBallTask(void) {
+  pickUpBall();  
+}
+
+// ==================================================================  MAIN PROGRAM STARTS HERE ==================================================================
 
 void task main() {
     while (true) {
@@ -521,6 +730,6 @@ void task main() {
           currentState = SEARCH;  // Default to search if invalid state
       }
       
-      wait1Msec(50);  // Small delay to prevent locking up the CPU, the main program keep checking the current state every 50ms
+      wait1Msec(100);  // Small delay to prevent locking up the CPU, the main program keep checking the current state every 100ms
     }
   }  
