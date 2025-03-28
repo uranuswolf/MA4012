@@ -92,7 +92,9 @@ void searchingAlgo() {
     wait1Msec(500);
 
     // Second scan row
-    turnDegrees(10, true);
+    turnDegrees(20, true);
+    wait1Msec(500);
+    moveDistance(1.25);
     wait1Msec(500);
     turnDegrees(30);
     wait1Msec(500);
