@@ -34,7 +34,7 @@ float wheelCircumference = wheelDiameter * PI; // meters
 int ticksPerRevolution = 90; // encoder ticks per revolution
 float distancePerTick = wheelCircumference / ticksPerRevolution; // meters per tick
 float wheelBase = 0.188; // distance between wheels (meters)
-
+int rollerSpeed = 127; // speed of the roller motor
 
 
 
@@ -296,6 +296,7 @@ deliver(){
 }
 
 pickUpBall(){
+  FRONT_ROLLER = -speed; //**from ACW from LSV
 }       // Pick up the ball, yuwei work on it tmr 
 
 moveTowardsBall(){
