@@ -34,7 +34,6 @@ void readIR() {
         IR_C = SensorValue[IR_C_Sensor];
         IR_D = SensorValue[IR_D_Sensor];
 
-        // Debug stream (optional)
         writeDebugStreamLine("IR_A: %d, IR_B: %d, IR_C: %d, IR_D: %d", IR_A, IR_B, IR_C, IR_D);
 
         wait1Msec(50);
@@ -62,10 +61,10 @@ void moveDistance(float distance, bool backward = false) {
     SensorValue[RIGHT_ENCODER] = 0;
 
     if (backward) {
-        motor[motorLeft] = 1.28*basePower;
+        motor[motorLeft] = 1.28 * basePower;
         motor[motorRight] = -basePower;
     } else {
-        motor[motorLeft] = -1.28*basePower;
+        motor[motorLeft] = -1.28 * basePower;
         motor[motorRight] = basePower;
     }
 
@@ -107,12 +106,14 @@ void turnDegrees(float degrees, bool right = false) {
 void checkLeftScanBoundary() {
     if ((IR_A == 1 && IR_C == 1) && (IR_B == 0 && IR_D == 0)) {
         leftScanBoundary = true;
+        writeDebugStreamLine("Left boundary detected");
     }
 }
 
 void checkRightScanBoundary() {
     if ((IR_B == 1 && IR_D == 1) && (IR_A == 0 && IR_C == 0)) {
         rightScanBoundary = true;
+        writeDebugStreamLine("Right boundary detected");
     }
 }
 
@@ -196,18 +197,19 @@ void searchingAlgoRight() {
 
 // === Main Scanning Function ===
 void searchingAlgo() {
-    startTask(readIRTask);     // Start IR update task
-    wait1Msec(200);            // Let sensors stabilize
+    startTask(readIRTask);
+    wait1Msec(200);  // Let sensors stabilize
 
     checkLeftScanBoundary();
     checkRightScanBoundary();
 
-    if (leftScanBoundary ==true & rightScanBoundary == false) {
+    if (leftScanBoundary && !rightScanBoundary) {
         searchingAlgoLeft();
-    } else if (leftScanBoundary ==false & rightScanBoundary == true) {
+    } else if (!leftScanBoundary && rightScanBoundary) {
         searchingAlgoRight();
     }
 }
+
 // === Main Entry Point ===
 task main() {
     searchingAlgo();
