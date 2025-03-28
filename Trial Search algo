@@ -55,17 +55,17 @@ float degreesToRadians(float degrees) {
 }
 
 void moveDistance(float distance, bool backward = false) {
-    float realDistance = distance * 10;
+    float realDistance = distance * 5;
     int targetTicks = distanceToTicks(realDistance);
 
     SensorValue[LEFT_ENCODER] = 0;
     SensorValue[RIGHT_ENCODER] = 0;
 
     if (backward) {
-        motor[motorLeft] = basePower;
+        motor[motorLeft] = 1.2*basePower;
         motor[motorRight] = -basePower;
     } else {
-        motor[motorLeft] = -basePower;
+        motor[motorLeft] = -1.2*basePower;
         motor[motorRight] = basePower;
     }
 
