@@ -55,17 +55,17 @@ float degreesToRadians(float degrees) {
 }
 
 void moveDistance(float distance, bool backward = false) {
-    float realDistance = distance * 5;
+    float realDistance = distance * 4;
     int targetTicks = distanceToTicks(realDistance);
 
     SensorValue[LEFT_ENCODER] = 0;
     SensorValue[RIGHT_ENCODER] = 0;
 
     if (backward) {
-        motor[motorLeft] = 1.2*basePower;
+        motor[motorLeft] = 1.28*basePower;
         motor[motorRight] = -basePower;
     } else {
-        motor[motorLeft] = -1.2*basePower;
+        motor[motorLeft] = -1.28*basePower;
         motor[motorRight] = basePower;
     }
 
@@ -129,7 +129,7 @@ void scanSequence() {
 // === Left Side Search Algorithm ===
 void searchingAlgoLeft() {
     moveDistance(1.2);
-    wait1Msec(500);
+    wait1Msec(1000);
     scanSequence();
 
     moveDistance(0.3);
@@ -139,16 +139,16 @@ void searchingAlgoLeft() {
     scanSequence();
 
     moveDistance(1.8, true);
-    wait1Msec(500);
+    wait1Msec(1000);
 
     turnDegrees(20, true);
-    wait1Msec(500);
+    wait1Msec(1000);
     moveDistance(1.25);
-    wait1Msec(500);
+    wait1Msec(1000);
     turnDegrees(40);
-    wait1Msec(500);
+    wait1Msec(1000);
     turnDegrees(20);
-    wait1Msec(500);
+    wait1Msec(1000);
 
     moveDistance(0.3);
     scanSequence();
@@ -157,13 +157,13 @@ void searchingAlgoLeft() {
     scanSequence();
 
     moveDistance(1.8, true);
-    wait1Msec(500);
+    wait1Msec(1000);
 }
 
 // === Right Side Search Algorithm (Mirrored) ===
 void searchingAlgoRight() {
     moveDistance(1.2);
-    wait1Msec(500);
+    wait1Msec(1000);
     scanSequence();
 
     moveDistance(0.3);
@@ -173,16 +173,16 @@ void searchingAlgoRight() {
     scanSequence();
 
     moveDistance(1.8, true);
-    wait1Msec(500);
+    wait1Msec(1000);
 
     turnDegrees(20); // turn left
-    wait1Msec(500);
+    wait1Msec(1000);
     moveDistance(1.25);
-    wait1Msec(500);
+    wait1Msec(1000);
     turnDegrees(40, true);
-    wait1Msec(500);
+    wait1Msec(1000);
     turnDegrees(20, true);
-    wait1Msec(500);
+    wait1Msec(1000);
 
     moveDistance(0.3);
     scanSequence();
@@ -191,7 +191,7 @@ void searchingAlgoRight() {
     scanSequence();
 
     moveDistance(1.8, true);
-    wait1Msec(500);
+    wait1Msec(1000);
 }
 
 // === Main Scanning Function ===
@@ -202,14 +202,13 @@ void searchingAlgo() {
     checkLeftScanBoundary();
     checkRightScanBoundary();
 
-    if (leftScanBoundary) {
+    if (leftScanBoundary ==true & rightScanBoundary == false) {
         searchingAlgoLeft();
-    } else if (rightScanBoundary) {
+    } else if (leftScanBoundary ==false & rightScanBoundary == true) {
         searchingAlgoRight();
     }
-
+}
 // === Main Entry Point ===
 task main() {
     searchingAlgo();
-}
 }
