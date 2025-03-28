@@ -16,13 +16,11 @@ float wheelBase = 0.188;
 bool leftScanBoundary = false;
 bool rightScanBoundary = false;
 
-// Simulated IR sensor values (replace with real sensor input in your implementation)
+// === Simulated/Real IR sensor values (set by your readIRTask) ===
 int IR_A = 0;
 int IR_B = 0;
 int IR_C = 0;
 int IR_D = 0;
-
-startTask{readIRTask}
 
 // === Helper Functions ===
 int distanceToTicks(float distance) {
@@ -82,16 +80,12 @@ void turnDegrees(float degrees, bool right = false) {
 
 // === IR Boundary Detection Functions ===
 void checkLeftScanBoundary() {
-    startTask(readIRTask); // Start sensor monitoring task
-
     if ((IR_A == 1 && IR_C == 1) && (IR_B == 0 && IR_D == 0)) {
         leftScanBoundary = true;
     }
 }
 
 void checkRightScanBoundary() {
-    startTask(readIRTask); // Start sensor monitoring task
-
     if ((IR_B == 1 && IR_D == 1) && (IR_A == 0 && IR_C == 0)) {
         rightScanBoundary = true;
     }
@@ -156,7 +150,7 @@ void searchingAlgoRight() {
     moveDistance(1.8, true);
     wait1Msec(500);
 
-    turnDegrees(10); // opposite of left
+    turnDegrees(10); // turn left
     wait1Msec(500);
     turnDegrees(30, true);
     wait1Msec(500);
@@ -175,8 +169,11 @@ void searchingAlgoRight() {
     wait1Msec(500);
 }
 
-// === Main Task ===
-task main() {
+// === Main Scanning Function ===
+void searchingAlgo() {
+    startTask(readIRTask);     // Starts your defined IR sensor reading task
+    wait1Msec(200);            // Let sensors stabilize
+
     checkLeftScanBoundary();
     checkRightScanBoundary();
 
@@ -185,4 +182,9 @@ task main() {
     } else if (rightScanBoundary) {
         searchingAlgoRight();
     }
+}
+
+// === Main Entry Point ===
+task main() {
+    searchingAlgo();
 }
