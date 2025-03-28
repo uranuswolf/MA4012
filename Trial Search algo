@@ -49,12 +49,12 @@ int distanceToTicks(float distance) {
     return distance / distancePerTick;
 }
 
-float degreesToRadians(float degrees) {
-    return degrees * PI / 180.0;
-}
+//float degreesToRadians(float degrees) {
+    //return degrees * PI / 180.0;
+//}
 
 void moveDistance(float distance, bool backward = false) {
-    float realDistance = distance * 4;
+    float realDistance = distance * 3.5;
     int targetTicks = distanceToTicks(realDistance);
 
     SensorValue[LEFT_ENCODER] = 0;
@@ -78,8 +78,10 @@ void moveDistance(float distance, bool backward = false) {
 }
 
 void turnDegrees(float degrees, bool right = false) {
-    float angleRadian = degreesToRadians(degrees);
-    float arcLength = angleRadian * (wheelBase / 2);
+    float realDegrees = degrees * 2.5; //(offset)
+    float turningCircumference = 3.14159 * wheelBase;  // Full turning circle
+    float arcLength = (realDegrees / 180.0) * turningCircumference; // One wheel arc distance
+    
     int targetTicks = distanceToTicks(arcLength);
 
     SensorValue[LEFT_ENCODER] = 0;
@@ -203,11 +205,12 @@ void searchingAlgo() {
     checkLeftScanBoundary();
     checkRightScanBoundary();
 
-    if (leftScanBoundary && !rightScanBoundary) {
-        searchingAlgoLeft();
-    } else if (!leftScanBoundary && rightScanBoundary) {
-        searchingAlgoRight();
-    }
+  
+    if (!leftScanBoundary && rightScanBoundary) {
+        searchingAlgoRight();}
+    //}else if (leftScanBoundary && !rightScanBoundary) {
+        //searchingAlgoLeft();
+    
 }
 
 // === Main Entry Point ===
