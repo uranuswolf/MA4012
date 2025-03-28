@@ -1,4 +1,25 @@
 // pragma config ## WORK ON THIS TMR 
+#pragma config(Sensor, in1,    sharpTC,        sensorAnalog)
+#pragma config(Sensor, in2,    sharpBL,        sensorAnalog)
+#pragma config(Sensor, in3,    sharpBC,        sensorAnalog)
+#pragma config(Sensor, in4,    sharpBR,        sensorAnalog)
+// #pragma config(Sensor, dgtl9,  IR_A, sensorDigitalIn)   need to change to analog pin
+// #pragma config(Sensor, dgtl10, IR_B, sensorDigitalIn)
+// #pragma config(Sensor, dgtl11, IR_C, sensorDigitalIn)
+// #pragma config(Sensor, dgtl12, IR_D, sensorDigitalIn)
+// #pragma config(Sensor, dgtl9,  limitswitchLB, sensorDigitalIn)   need to decide on the digital pin
+// #pragma config(Sensor, dgtl10, limitswitchRB, sensorDigitalIn)
+// #pragma config(Sensor, dgtl11, limitswitchBall, sensorDigitalIn)
+#pragma config(Sensor, dgtl2,  RIGHT_ENCODER,  sensorQuadEncoder)
+#pragma config(Sensor, dgtl4,  LEFT_ENCODER,   sensorQuadEncoder)
+#pragma config(Sensor, dgtl10,  compass_LSB,    sensorDigitalIn)
+#pragma config(Sensor, dgtl9,  compass_Bit3,   sensorDigitalIn)
+#pragma config(Sensor, dgtl8, compass_Bit2,   sensorDigitalIn)
+#pragma config(Sensor, dgtl7, compass_MSB,    sensorDigitalIn)
+#pragma config(Motor,  port3,  motorLeft,      tmotorVex393_MC29, openLoop)
+#pragma config(Motor,  port4,  motorRight,     tmotorVex393_MC29, openLoop)
+#pragma config(Motor, port9, FRONT_ROLLER, tmotorVex393_MC29, openLoop)
+#pragma config(Motor, port10, FLAPPER, tmotorVex393_MC29, openLoop)
 
 
 
