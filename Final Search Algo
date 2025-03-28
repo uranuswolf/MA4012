@@ -1,0 +1,201 @@
+#pragma config(Sensor, dgtl2,  RIGHT_ENCODER,  sensorQuadEncoder)
+#pragma config(Sensor, dgtl4,  LEFT_ENCODER,   sensorQuadEncoder)
+#pragma config(Motor,  port3,  motorLeft,      tmotorVex393_MC29, openLoop)
+#pragma config(Motor,  port4,  motorRight,     tmotorVex393_MC29, openLoop)
+
+// === Constants & Global Variables ===
+int basePower = 50;
+#define PI 3.14159265359
+
+float wheelDiameter = 0.06985;
+float wheelCircumference = wheelDiameter * PI;
+int ticksPerRevolution = 90;
+float distancePerTick = wheelCircumference / ticksPerRevolution;
+float wheelBase = 0.188;
+
+bool leftScanBoundary = false;
+bool rightScanBoundary = false;
+
+// Simulated IR sensor values (replace with real sensor input in your implementation)
+int IR_A = 0;
+int IR_B = 0;
+int IR_C = 0;
+int IR_D = 0;
+
+// === IR Sensor Task (Simulated values) ===
+task readIRTask() {
+    while (true) {
+        // Simulate left boundary detection:
+        IR_A = 1; IR_C = 1;
+        IR_B = 0; IR_D = 0;
+
+        // Simulate right boundary instead by commenting above and using:
+        // IR_A = 0; IR_C = 0;
+        // IR_B = 1; IR_D = 1;
+
+        wait1Msec(100);
+    }
+}
+
+// === Helper Functions ===
+int distanceToTicks(float distance) {
+    return distance / distancePerTick;
+}
+
+float degreesToRadians(float degrees) {
+    return degrees * PI / 180.0;
+}
+
+void moveDistance(float distance, bool backward = false) {
+    float realDistance = distance * 10;
+    int targetTicks = distanceToTicks(realDistance);
+
+    SensorValue[LEFT_ENCODER] = 0;
+    SensorValue[RIGHT_ENCODER] = 0;
+
+    if (backward) {
+        motor[motorLeft] = basePower;
+        motor[motorRight] = -basePower;
+    } else {
+        motor[motorLeft] = -basePower;
+        motor[motorRight] = basePower;
+    }
+
+    while (abs(SensorValue[LEFT_ENCODER]) < targetTicks && abs(SensorValue[RIGHT_ENCODER]) < targetTicks) {
+        wait1Msec(10);
+    }
+
+    motor[motorLeft] = 0;
+    motor[motorRight] = 0;
+}
+
+void turnDegrees(float degrees, bool right = false) {
+    float angleRadian = degreesToRadians(degrees);
+    float arcLength = angleRadian * (wheelBase / 2);
+    int targetTicks = distanceToTicks(arcLength);
+
+    SensorValue[LEFT_ENCODER] = 0;
+    SensorValue[RIGHT_ENCODER] = 0;
+
+    if (right) {
+        motor[motorLeft] = -127;
+        motor[motorRight] = -127;
+    } else {
+        motor[motorLeft] = 127;
+        motor[motorRight] = 127;
+    }
+
+    while (abs(SensorValue[LEFT_ENCODER]) < targetTicks && abs(SensorValue[RIGHT_ENCODER]) < targetTicks) {
+        wait1Msec(10);
+    }
+
+    motor[motorLeft] = 0;
+    motor[motorRight] = 0;
+}
+
+// === IR Boundary Detection Functions ===
+void checkLeftScanBoundary() {
+    startTask(readIRTask); // Start sensor monitoring task
+
+    if ((IR_A == 1 && IR_C == 1) && (IR_B == 0 && IR_D == 0)) {
+        leftScanBoundary = true;
+    }
+}
+
+void checkRightScanBoundary() {
+    startTask(readIRTask); // Start sensor monitoring task
+
+    if ((IR_B == 1 && IR_D == 1) && (IR_A == 0 && IR_C == 0)) {
+        rightScanBoundary = true;
+    }
+}
+
+// === Scan Sequence Pattern ===
+void scanSequence() {
+    turnDegrees(20);
+    wait1Msec(500);
+    turnDegrees(40, true);
+    wait1Msec(500);
+    turnDegrees(20);
+    wait1Msec(500);
+}
+
+// === Left Side Search Algorithm ===
+void searchingAlgoLeft() {
+    moveDistance(1.2);
+    wait1Msec(500);
+    scanSequence();
+
+    moveDistance(0.3);
+    scanSequence();
+
+    moveDistance(0.3);
+    scanSequence();
+
+    moveDistance(1.8, true);
+    wait1Msec(500);
+
+    turnDegrees(10, true);
+    wait1Msec(500);
+    turnDegrees(30);
+    wait1Msec(500);
+    turnDegrees(40, true);
+    wait1Msec(500);
+    turnDegrees(20);
+    wait1Msec(500);
+
+    moveDistance(0.3);
+    scanSequence();
+
+    moveDistance(0.3);
+    scanSequence();
+
+    moveDistance(1.8, true);
+    wait1Msec(500);
+}
+
+// === Right Side Search Algorithm (Mirrored) ===
+void searchingAlgoRight() {
+    moveDistance(1.2);
+    wait1Msec(500);
+    scanSequence();
+
+    moveDistance(0.3);
+    scanSequence();
+
+    moveDistance(0.3);
+    scanSequence();
+
+    moveDistance(1.8, true);
+    wait1Msec(500);
+
+    turnDegrees(10); // opposite of left
+    wait1Msec(500);
+    turnDegrees(30, true);
+    wait1Msec(500);
+    turnDegrees(40);
+    wait1Msec(500);
+    turnDegrees(20, true);
+    wait1Msec(500);
+
+    moveDistance(0.3);
+    scanSequence();
+
+    moveDistance(0.3);
+    scanSequence();
+
+    moveDistance(1.8, true);
+    wait1Msec(500);
+}
+
+// === Main Task ===
+task main() {
+    checkLeftScanBoundary();
+    checkRightScanBoundary();
+
+    if (leftScanBoundary) {
+        searchingAlgoLeft();
+    } else if (rightScanBoundary) {
+        searchingAlgoRight();
+    }
+}
