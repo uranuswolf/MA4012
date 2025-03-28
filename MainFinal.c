@@ -257,6 +257,22 @@ readIR(void){
     wait1Msec(50); // read IR values every 50ms
 }
 
+readlimitswitch(void){
+    while (true){
+        limitswitchLB = SensorValue[limitswitchLB]; 
+        limitswitchRB = SensorValue[limitswitchRB]; 
+        limitswitchBall = SensorValue[limitswitchBall]; 
+        //IR_D = SensorValue[IR_D]; 
+    
+        // Print digital sensor value to debug stream
+        writeDebugStreamLine("limitswitchLB: %d", limitswitchLB_VALUE);
+        writeDebugStreamLine("limitswitchRB: %d", limitswitchRB_VALUE);
+        writeDebugStreamLine("limitswitchBall: %d", limitswitchBall_VALUE);
+        //writeDebugStreamLine("IR_D: %d", IR_D_VALUE);
+
+    wait1Msec(50); // read IR values every 50ms
+}
+
 scanBoundary(void){
     startTask(readIRTask);  // Start the read IR task 
         // Check if any two IR sensors are 0
