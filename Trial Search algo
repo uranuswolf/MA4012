@@ -122,11 +122,11 @@ void checkRightScanBoundary() {
 // === Scan Sequence Pattern ===
 void scanSequence() {
     turnDegrees(20);
-    wait1Msec(500);
+    wait1Msec(1000);
     turnDegrees(40, true);
-    wait1Msec(500);
+    wait1Msec(1000);
     turnDegrees(20);
-    wait1Msec(500);
+    wait1Msec(1000);
 }
 
 // === Left Side Search Algorithm ===
