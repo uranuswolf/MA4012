@@ -417,8 +417,9 @@ void handleBoundary(void){
             moveDistance(0.5);
             break;
         
-        default:
-            // do nothing just break
+        default: //This provides a reasonable recovery behavior when the boundary detection isn't perfectly clear.
+            moveDistance(0.3, true);  // Back up slightly
+            turnDegrees(45);          // Turn left 45 degrees
             break;
     }
     
