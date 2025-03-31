@@ -3,26 +3,27 @@
 #pragma config(Sensor, in2,    sharpBL,        sensorAnalog)
 #pragma config(Sensor, in3,    sharpBC,        sensorAnalog)
 #pragma config(Sensor, in4,    sharpBR,        sensorAnalog)
-// #pragma config(Sensor, dgtl9,  IR_A, sensorDigitalIn)   need to change to analog pin
-// #pragma config(Sensor, dgtl10, IR_B, sensorDigitalIn)
-// #pragma config(Sensor, dgtl11, IR_C, sensorDigitalIn)
-// #pragma config(Sensor, dgtl12, IR_D, sensorDigitalIn)
-// #pragma config(Sensor, dgtl9,  limitswitchLB, sensorDigitalIn)   need to decide on the digital pin
-// #pragma config(Sensor, dgtl10, limitswitchRB, sensorDigitalIn)
-// #pragma config(Sensor, dgtl11, limitswitchBall, sensorDigitalIn)
-#pragma config(Sensor, dgtl2,  RIGHT_ENCODER,  sensorQuadEncoder)
-#pragma config(Sensor, dgtl4,  LEFT_ENCODER,   sensorQuadEncoder)
-#pragma config(Sensor, dgtl10,  compass_LSB,    sensorDigitalIn)
+#pragma config(Sensor, in5,    IR_A,           sensorAnalog)
+#pragma config(Sensor, in6,    IR_B,           sensorAnalog)
+#pragma config(Sensor, in7,    IR_C,           sensorAnalog)
+#pragma config(Sensor, in8,    IR_D,           sensorAnalog)
+#pragma config(Sensor, dgtl1,  limitswitchLB,  sensorDigitalIn)
+#pragma config(Sensor, dgtl2,  limitswitchRB,  sensorDigitalIn)
+#pragma config(Sensor, dgtl3,  limitswitchBall,sensorDigitalIn)
+#pragma config(Sensor, dgtl4,  RIGHT_ENCODER,  sensorQuadEncoder) 
+#pragma config(Sensor, dgtl6,  LEFT_ENCODER,   sensorQuadEncoder) 
+#pragma config(Sensor, dgtl10, compass_LSB,    sensorDigitalIn)
 #pragma config(Sensor, dgtl9,  compass_Bit3,   sensorDigitalIn)
-#pragma config(Sensor, dgtl8, compass_Bit2,   sensorDigitalIn)
-#pragma config(Sensor, dgtl7, compass_MSB,    sensorDigitalIn)
+#pragma config(Sensor, dgtl8,  compass_Bit2,   sensorDigitalIn)
+#pragma config(Sensor, dgtl7,  compass_MSB,    sensorDigitalIn)
 #pragma config(Motor,  port3,  motorLeft,      tmotorVex393_MC29, openLoop)
 #pragma config(Motor,  port4,  motorRight,     tmotorVex393_MC29, openLoop)
-#pragma config(Motor, port9, FRONT_ROLLER, tmotorVex393_MC29, openLoop)
-#pragma config(Motor, port10, BACK_ROLLER, tmotorVex393_MC29, openLoop)
+#pragma config(Motor,  port9,  FRONT_ROLLER,   tmotorVex393_MC29, openLoop)
+#pragma config(Motor,  port10, BACK_ROLLER,    tmotorVex393_MC29, openLoop)
 
 
 // ================================================================== Function prototypes ==================================================================
+// **************************Khirdir please update the function prototypes as needed**************************
 void moveDistance(float distance, bool backward = false); 
 void turnDegrees(float degrees, bool right = false);
 int distanceToTicks(float distance);
@@ -63,10 +64,10 @@ task deliverTask(void);
 task readIRTask(void);
 task readDistanceSensorTask(void);
 task releaseExtraBallsTask(void);
-task check_current_heading(void);
+task check_current_headingTask(void);
 task moveTowardsBallTask(void);
 task pickUpBallTask(void);
-// **************************Khirdir please update the function prototypes as needed**************************
+
 
 
 
@@ -84,7 +85,7 @@ typedef enum {
 
 // ================================================================== Global variables ==================================================================
 RobotState currentState = SEARCH;  // Start with the 'Search' phase
-int IR_A = 1; // IR sensor A = 0 or 1, 0 means at boundary, 1 means not at boundary
+int IR_A = 1; // IR sensor A = 0 or 1, 0 means at boundary, 1 means not at boundary, 
 int IR_B = 1;// IR sensor B = 0 or 1
 int IR_C = 1;// IR sensor C = 0 or 1
 int IR_D = 1;// IR sensor D = 0 or 1
@@ -96,7 +97,14 @@ bool reachedBase = false;  // Flag to indicate if the robot has reached the base
 bool isDelivered = false;  // Flag to indicate if the ball is delivered
 bool leftScanBoundary = false; //Flag to indicate if the left boundary is detected
 bool rightScanBoundary = false; //Flag to indicate if the right boundary is detected
+int heading ; // Variable to store the compass heading
+int limitswitchLB = 0; // Variable to store the value of the left limit switch
+int limitswitchRB = 0; // Variable to store the value of the right limit switch
+int limitswitchBall = 0; // Variable to store the value of the ball limit switc
 // **************************Khirdir please update the Global variables as needed**************************
+
+// Mutex for shared variables
+TMutex mutex;
 
 
 // ================================================================== Define constants ==================================================================
@@ -107,6 +115,7 @@ const int ticksPerRevolution = 90; // encoder ticks per revolution
 const float distancePerTick = wheelCircumference / ticksPerRevolution; // meters per tick
 const float wheelBase = 0.188; // distance between wheels (meters)
 const int rollerSpeed = 127; // speed of the roller motor
+const int MAX_DISTANCE = 300; // 300cm max distance for return, CHECK AGAIN 
 // **************************Khirdir please update the constants as needed**************************
 
 
@@ -120,12 +129,12 @@ void searchPhase(void) {
     // Keep checking for ball,boundary and obstacles in this phase, if not, keep doing the above 4 tasks concurrently
     while (true) {
       if (isBall) {
-        currentState = COLLECT;  // Change to collect phase when the ball is detected
         stopTask(searchAlgoTask); // Stop the search algorithm task
         stopTask(scanBallTask);   // Stop the scan ball task
         stopTask(scanBoundaryTask);  // Start the scan boundary task
         stopTask(scanObstacleTask);  // Start the scan Obstacle task
         isBall = false;  // Reset the flag
+        currentState = COLLECT;  // Change to collect phase when the ball is detected
         break;  // Exit the while loop
       }
       else if (isBoundary) {
@@ -316,7 +325,8 @@ void FlapperStop(void){
 int compass(void){
 	int num;
 	num = SensorValue[compass_MSB]*pow(2,3) + SensorValue[compass_Bit2]*pow(2,2) + SensorValue[compass_Bit3]*2 + SensorValue[compass_LSB];
-	switch(num){
+	
+  switch(num){
 	case 7: return 0; 		//W
 		break;
 	case 3: return 45; 		//SW
@@ -337,50 +347,41 @@ int compass(void){
 	return -1;
 }
 
-void readIR(void){
-    while (true){
-        IR_A = SensorValue[IR_A]; 
-        IR_B = SensorValue[IR_B]; 
-        IR_C = SensorValue[IR_C]; 
-        IR_D = SensorValue[IR_D]; 
-    
-        // Print digital sensor value to debug stream
-        writeDebugStreamLine("IR_A: %d", IR_A);
-        writeDebugStreamLine("IR_B: %d", IR_B);
-        writeDebugStreamLine("IR_C: %d", IR_C);
-        writeDebugStreamLine("IR_D: %d", IR_D);
-
-    wait1Msec(50); // read IR values every 50ms
-}
+void readIR(void) {
+  while(true) {
+      AcquireMutex(mutex);
+      IR_A = SensorValue[IR_A] < 300 ? 0 : 1; // Threshold for detection is 300 
+      IR_B = SensorValue[IR_B] < 300 ? 0 : 1; 
+      IR_C = SensorValue[IR_C] < 300 ? 0 : 1;
+      IR_D = SensorValue[IR_D] < 300 ? 0 : 1;
+      ReleaseMutex(mutex);
+      
+      wait1Msec(50);
+  }
 }
 
-void readlimitswitch(void){
-    while (true){
-        limitswitchLB = SensorValue[limitswitchLB]; 
-        limitswitchRB = SensorValue[limitswitchRB]; 
-        limitswitchBall = SensorValue[limitswitchBall]; 
-        //IR_D = SensorValue[IR_D]; 
-    
-        // Print digital sensor value to debug stream
-        writeDebugStreamLine("limitswitchLB: %d", limitswitchLB_VALUE);
-        writeDebugStreamLine("limitswitchRB: %d", limitswitchRB_VALUE);
-        writeDebugStreamLine("limitswitchBall: %d", limitswitchBall_VALUE);
-        //writeDebugStreamLine("IR_D: %d", IR_D_VALUE);
-
-    wait1Msec(50); // read IR values every 50ms
-}
+void readlimitswitch(void) {
+  while(true) {
+      AcquireMutex(mutex);
+      limitswitchLB = SensorValue[limitswitchLB];
+      limitswitchRB = SensorValue[limitswitchRB];
+      limitswitchBall = SensorValue[limitswitchBall];
+      ReleaseMutex(mutex);
+      
+      wait1Msec(50);
+  }
 }
 
-void scanBoundary(void){
-    startTask(readIRTask);  // Start the read IR task 
-        // Check if any two IR sensors are 0
-        if ((IR_A == 0 && IR_B == 0) || (IR_A == 0 && IR_C == 0) || (IR_A == 0 && IR_D == 0) || 
-            (IR_B == 0 && IR_C == 0) || (IR_B == 0 && IR_D == 0) || (IR_C == 0 && IR_D == 0)) {
-            isBoundary = true;  // Set isBoundary to true if any two IR sensors are 0
-        }
+void scanBoundary(void) {
+  if ((IR_A == 0 && IR_B == 0) || (IR_A == 0 && IR_C == 0) || (IR_A == 0 && IR_D == 0) || 
+      (IR_B == 0 && IR_C == 0) || (IR_B == 0 && IR_D == 0) || (IR_C == 0 && IR_D == 0)) {
+      AcquireMutex(mutex);
+      isBoundary = true;
+      ReleaseMutex(mutex);
+  }
 }
 
-void handleBoundary(IR_A, IR_B, IR_C, IR_D){
+void handleBoundary(void){
 
     int IR_State = 0;
 
@@ -447,16 +448,28 @@ void scanBall(){
     //  isBall = true if the ball is detected
 }
 
-void returnToBase(void){
-    startTask(check_current_heading); // Start the reading of the compass heading
+//void returnToBase(void){
+    //startTask(check_current_headingTask); // Start the reading of the compass heading
     // Implement the return to base algorithm here
     // use simple movement function + compass
-    float degree = abs(270 - heading);
-    turnDegrees(degree, bool right = true); //turn
-    moveDistance(300, bool backward = true);
-    if(heading == 270 && (limitswitchLB == 0 || limitswitchRB == 0) && (IR_C == 0 && IR_D == 0){//condition to check if the robot has reached the base, make use of the limit switches and other indicators 
-    reachedBase = true;
-}
+    //float degree = abs(270 - heading);
+    //turnDegrees(degree, bool right = true); //turn
+    //moveDistance(300, bool backward = true);
+    //if(heading == 270 && (limitswitchLB == 0 || limitswitchRB == 0) && (IR_C == 0 && IR_D == 0){//condition to check if the robot has reached the base, make use of the limit switches and other indicators 
+    //reachedBase = true;
+//}
+//}
+
+void returnToBase(void) {
+  float degree = abs(270 - heading);
+  turnDegrees(degree, true);
+  moveDistance(MAX_DISTANCE/100.0, true); // Convert cm to meters
+  
+  if(heading == 270 && (limitswitchLB == 1 || limitswitchRB == 1) && (IR_C == 0 && IR_D == 0)) {
+      AcquireMutex(mutex);
+      reachedBase = true;
+      ReleaseMutex(mutex);
+  }
 }
 
 void deliver(){
@@ -466,17 +479,21 @@ void deliver(){
     return isDelivered = true;
 }
 
-void pickUpBall(void){
-  frontRollerIntake(); //activate front roller to pickup ball
-  while (true){ //keep checking for the top limit swtich
-    if (isBallPicked) {
-      frontRollerStop(); //STOP THE FRONT ROLLER 
-      break;  // Exit the while loop  
-  } 
-}
-}       
+void pickUpBall(void) {
+  frontRollerIntake();
+  while (true) {
+      if (limitswitchBall == 1) {
+          frontRollerStop();
+          AcquireMutex(mutex);
+          isBallPicked = true;
+          ReleaseMutex(mutex);
+          break;
+      }
+      wait1Msec(100);
+  }
+}    
 
-void moveTowardsBall(void){  ,
+void moveTowardsBall(void){  
    //implement logic to move towards the ball after detecting it
    // ****************************Khirdir please update this function as needed*******************************
 }  
@@ -487,7 +504,7 @@ int distanceToTicks(float distance) {
 }
 
 // Move forward or backward by distance (in meters)
-void moveDistance(float distance, bool backward = false) {
+void moveDistance(float distance, bool backward) {
 	float realDistance = distance * 3.5; //offset = 3.5
   int targetTicks = distanceToTicks(realDistance);
 
@@ -511,7 +528,7 @@ void moveDistance(float distance, bool backward = false) {
 }
 
 // Turn left or right by angle (in degrees)
-void turnDegrees(float degrees, bool right = false) {
+void turnDegrees(float degrees, bool right) {
     float realDegrees = degrees * 2.5; //offset is 2.5
     float turningCircumference = PI * wheelBase;  // Full turning circle
     float arcLength = (realDegrees / 180.0) * turningCircumference; // One wheel arc distance
@@ -541,12 +558,10 @@ void checkBoundary(void) {
   if ((IR_A == 1 && IR_C == 1) && (IR_B == 0 && IR_D == 0)) {
       leftScanBoundary = true;
       rightScanBoundary = false;  // Ensure this flag is reset
-      writeDebugStreamLine("Left boundary detected");
   } 
   else if ((IR_B == 1 && IR_D == 1) && (IR_A == 0 && IR_C == 0)) {
       rightScanBoundary = true;
       leftScanBoundary = false;  // Ensure this flag is reset
-      writeDebugStreamLine("Right boundary detected");
   } 
 }
 
@@ -663,42 +678,68 @@ void searchingAlgo(void) {
 
 // ==================================================================  Concurrent tasks for required in different phases ==================================================================
 // **************************Khirdir please update the concurrent tasks as needed**************************
+
+// Execute the search algorithm during the search phase 
 task searchAlgoTask(void) {
-    searchingAlgo();  // Execute the search algorithm during the search phase 
+    searchingAlgo();  
   }
-  
+
+// Constantly scan for the ball during the search phase  
 task scanBallTask(void) {
-    scanBall();  // Constantly scan for the ball during the search phase
+  while(task){
+    scanBall();  
+    wait1Msec(100);
   }
+}
 
+// Constantly scan for the boundary during all the phase
 task scanBoundaryTask(void) {
-    scanBoundary();  // Constantly scan for the boundary during all the phase
+  while(task){
+    scanBoundary();  
+    wait1Msec(100);
   }
+}
 
+// Constantly scan for obstacles during the all phase
 task scanObstacleTask(void) {
-    scanObstacle();  // Constantly scan for obstacles during the all phase
+  while(true){  
+     scanObstacle(); 
+     wait1Msec(100);
   }
+}
+
+// Execute the return to base algorithm during the return phase
 task returnToBaseTask(void) {
-    returnToBase();  // Execute the return to base algorithm during the return phase
-  }
-task deliverTask(void) {
-    deliver();  // Execute the deliver algorithm during the deliver phase
-  }
-task readIRTask(void) {
-    readIR();  // Read IR sensor values continuously
-  } 
-task readDistanceSensorTask(void) {
-    readDistanceSensor();  // Read distance sensor values continuously
-  }
-task releaseExtraBallsTask(void) {
-    frontRollerOutput();  // Release extra balls
+    returnToBase();  
   }
 
-task check_current_heading(void){
-	while(1){
-		int heading = compass();
+// Execute the deliver algorithm during the deliver phase
+task deliverTask(void) {
+    deliver();  
+  }
+
+ // Read IR sensor values continuously
+task readIRTask(void) {
+    readIR(); 
+  } 
+
+// Read distance sensor values continuously
+task readDistanceSensorTask(void) {
+    readDistanceSensor();  
+  }
+
+// Release extra balls
+task releaseExtraBallsTask(void) {
+    frontRollerOutput();  
+  }
+
+task check_current_headingTask(void){
+	while(true){
+		heading = compass();
+    wait1Msec(100);
 	}
 }
+
 task moveTowardsBallTask(void) {
   moveTowardsBall();  
 }
@@ -708,8 +749,12 @@ task pickUpBallTask(void) {
 }
 
 // ==================================================================  MAIN PROGRAM STARTS HERE ==================================================================
+ task main() {
+    // Initialize tasks
+    startTask(check_current_heading);
+    startTask(readIRTask);
+    startTask(readDistanceSensorTask);
 
-void task main() {
     while (true) {
 
       // Switch based on the current state
@@ -729,7 +774,6 @@ void task main() {
         default:
           currentState = SEARCH;  // Default to search if invalid state
       }
-      
       wait1Msec(100);  // Small delay to prevent locking up the CPU, the main program keep checking the current state every 100ms
     }
   }  
