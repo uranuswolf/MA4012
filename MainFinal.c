@@ -762,7 +762,7 @@ task pickUpBallTask(void) {
       switch (currentState) {
         case SEARCH:
           searchPhase();
-          break;
+          break; // just exit the switch statement , not the WHILE loop
         case COLLECT:
           collectPhase();
           break;
