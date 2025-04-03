@@ -475,7 +475,7 @@ void returnToBase(void) {
 
 void deliver(){
     // Implement the deliver algorithm here
-  while(reachedBase){
+  while(true){
     if (limitswitchBall == 1){//condition to check if the ball has been delivered, make use of the limit switches and other indicators
     // ****************************Yu Shun and KC please update this function as needed*******************************
 	Flapperpush();
