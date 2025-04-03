@@ -101,7 +101,10 @@ int heading ; // Variable to store the compass heading
 int limitswitchLB = 0; // Variable to store the value of the left limit switch
 int limitswitchRB = 0; // Variable to store the value of the right limit switch
 int limitswitchBall = 0; // Variable to store the value of the ball limit switc
-// **************************Khirdir please update the Global variables as needed**************************
+float distTC = 0.0;
+float distBR = 0.0;
+float distBL = 0.0;
+float distBC = 0.0;
 
 // Mutex for shared variables
 TMutex mutex;
@@ -425,16 +428,34 @@ void handleBoundary(void){
     
 }
 
-void readDistanceSensor(){
-    // Implement logic here to read the distance sensor 
-    // ****************************Khirdir please update this function as needed*******************************
+void readSensorDistance(tSensors sensor, int samples = 5) {   // by Khidir
+    int sum = 0;
+    for (int i = 0; i < samples; i++) {
+        sum += SensorValue[sensor];
+        wait1Msec(10);
+    }
+
+    int avgAnalog = sum / samples;
+    float voltage = (avgAnalog * 5.0) / 4095.0;
+    float distance = 80.0; // default fallback
+
+    if (avgAnalog == 0) distance = 80.0;
+    else if (sensor == sharpTC)       distance = 25.99 / pow(voltage, 1.22);
+    else if (sensor == sharpBR)       distance = 28.37 / pow(voltage, 1.08);
+    else if (sensor == sharpBL)       distance = 26.82 / pow(voltage, 1.28);
+    else if (sensor == sharpBC)       distance = 10.02 / pow(voltage, 1.26);
+
+    // Assign to correct global variable
+    if (sensor == sharpTC)       distTC = distance;
+    else if (sensor == sharpBR)  distBR = distance;
+    else if (sensor == sharpBL)  distBL = distance;
+    else if (sensor == sharpBC)  distBC = distance;
 }
 
-void scanObstacle(){
-    startTask(readDistanceSensor);  // Start the read IR task 
-    // Implement logic here
-    // ****************************Khirdir please update this function as needed*******************************
-    // isObstacle = true if an obstacle is detected
+// === Detects Opponent Robot === // by Khidir
+void scanObstacle() {
+    readSensorDistance(sharpTC);
+    isObstacle = (distTC >= 10.0 && distTC <= 80.0); // returns True when Robot is present
 }
 
 void handleObstacle(){
@@ -442,11 +463,12 @@ void handleObstacle(){
     // ****************************Khirdir please update this function as needed*******************************
 }
 
-void scanBall(){
-    startTask(readDistanceSensor);  // Start the read IR task 
-    // Implement logic here to scan for the ball
-    // ****************************Khirdir please update this function as needed*******************************
-    //  isBall = true if the ball is detected
+// === Detects Ball ===  // by Khidir
+void scanBall() {
+    readSensorDistance(sharpBL);
+    readSensorDistance(sharpBR);
+    isBall = (distBL >= 10.0 && distBL <= 70.0) || 
+             (distBR >= 10.0 && distBR <= 70.0);
 }
 
 //void returnToBase(void){
@@ -503,10 +525,22 @@ void pickUpBall(void) {
   }
 }    
 
-void moveTowardsBall(void){  
-   //implement logic to move towards the ball after detecting it
-   // ****************************Khirdir please update this function as needed*******************************
-}  
+// === Move Towards Ball === // By Khidir
+void MoveTowardsBall() {
+    // Ensure latest values are available
+    readSensorDistance(sharpBL);
+    readSensorDistance(sharpBR);
+
+    if (distBL < 20.0 || distBR < 20.0) {
+        motor[motorL] = 0;
+        motor[motorR] = 0;
+        writeDebugStreamLine("ACTION    | Stopped in front of the ball (distBL: %.2f | distBR: %.2f cm)", distBL, distBR);
+    } else {
+        motor[motorL] = 30;
+        motor[motorR] = 30;
+        writeDebugStreamLine("ACTION    | Moving towards the ball (distBL: %.2f | distBR: %.2f cm)", distBL, distBR);
+    }
+} 	
 
 // Convert desired distance in meters to encoder ticks
 int distanceToTicks(float distance) {
