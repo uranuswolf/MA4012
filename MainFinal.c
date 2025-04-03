@@ -466,7 +466,7 @@ void returnToBase(void) {
   turnDegrees(degree, true);
   moveDistance(MAX_DISTANCE/100.0, true); // Convert cm to meters
   
-  if(heading == 270 && (limitswitchLB == 1 || limitswitchRB == 1) && (IR_C == 0 && IR_D == 0)) {
+  if(heading == 270 && (limitswitchLB == 1 || limitswitchRB == 1) && (IR_C == 0 && IR_D == 0)) { //checking that the robot is back is facing the deliver
       AcquireMutex(mutex);
       reachedBase = true;
       ReleaseMutex(mutex);
