@@ -478,9 +478,9 @@ void deliver(){
   while(true){
     if (limitswitchBall == 1){//condition to check if the ball has been delivered, make use of the limit switches and other indicators
     // ****************************Yu Shun and KC please update this function as needed*******************************
-	Flapperpush();
+	FlapperPush();
 	wait1Msec(100);
-	Flapperstop();
+	FlapperStop();
 	break;
     }
     wait1Msec(100);
