@@ -481,7 +481,9 @@ void deliver(){
 	Flapperpush();
 	wait1Msec(100);
 	Flapperstop();
+	break;
     }
+    wait1Msec(100);
   }
 
     return isDelivered = true;
