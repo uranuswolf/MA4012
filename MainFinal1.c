@@ -144,6 +144,7 @@ void searchPhase(void) {
             ReleaseMutex(mutex);
             break;
         }
+        ReleaseMutex(mutex);  // Release if condition not met
         AcquireMutex(mutex);
         if (isBoundary || isFrontObstacle || isBackObstacle) {
             if (!robotMovingBack) {
