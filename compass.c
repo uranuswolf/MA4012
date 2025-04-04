@@ -6,11 +6,11 @@
 
 float compass(){
 	int MSB = SensorValue[compass_MSB] > 0 ? 1 : 0;;
-	int Bit2 = SensorValue[compass_Bit2]> 0 ? 1 : 0;;
-	int Bit3 = SensorValue[compass_Bit3]> 0 ? 1 : 0;;
+	int Bittwo = SensorValue[compass_Bit2]> 0 ? 1 : 0;;
+	int Bitthree = SensorValue[compass_Bit3]> 0 ? 1 : 0;;
 	int LSB = SensorValue[compass_LSB] > 0 ? 1 : 0;;
 	int num;
-	num = MSB*pow(2,3) + Bit2*pow(2,2) + Bit3*2 + LSB;
+	num = MSB*pow(2,3) + Bittwo*pow(2,2) + Bitthree*2 + LSB;
 	switch(num){
 	case 7: return 0; 		//W
 		break;
