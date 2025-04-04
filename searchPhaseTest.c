@@ -11,10 +11,6 @@
 #pragma config(Sensor, dgtl7,  limitswitchBall,sensorDigitalIn)
 #pragma config(Sensor, dgtl1,  RIGHT_ENCODER,  sensorQuadEncoder) 
 #pragma config(Sensor, dgtl3,  LEFT_ENCODER,   sensorQuadEncoder) 
-#pragma config(Sensor, in3, compass_LSB,    sensorAnalog)
-#pragma config(Sensor, in4,  compass_Bit3,   sensorAnalog)
-#pragma config(Sensor, in5,  compass_Bit2,   sensorAnalog)
-#pragma config(Sensor, in6,  compass_MSB,    sensorAnalog)
 #pragma config(Motor,  port3,  motorLeft,      tmotorVex393_MC29, openLoop)
 #pragma config(Motor,  port2,  motorRight,     tmotorVex393_MC29, openLoop)
 #pragma config(Motor,  port8,  FRONT_ROLLER,   tmotorVex393_MC29, openLoop)
@@ -36,8 +32,7 @@ bool isFrontObstacle = false;
 bool isBackObstacle = false;
 bool robotMovingBack = false;
 bool robotMovingFront = false;
-bool leftScanBoundary = false;
-bool rightScanBoundary = false;
+bool firstScan = true;
 
 int IR_A_val = 1;
 int IR_B_val = 1;
@@ -49,7 +44,6 @@ float distFR = 0.0;
 float distFL = 0.0;
 float distBC = 0.0;
 
-int heading;
 
 // Constants
 const int basePower = 50;
@@ -58,6 +52,7 @@ const float wheelCircumference = wheelDiameter * PI; // meters
 const int ticksPerRevolution = 90;
 const float distancePerTick = wheelCircumference / ticksPerRevolution;
 const float wheelBase = 0.188;
+const int rollerSpeed = 127; // Speed for the front roller motor
 
 
 
@@ -72,17 +67,15 @@ void scanBoundary(void);
 void scanObstacle(void);
 void scanBall(void);
 void readIR(void);
-void checkBoundary(void);
-void scanSequenceLeft(void);
-void scanSequenceRight(void);
-void searchingAlgoLeft(void);
-void searchingAlgoRight(void);
 void searchingAlgo(void);
+void spiralSearchAlgo(void);
+void firstScanSearchAlgo(void);
+void goToCenter(void);
+void deliverBall(void);
 void convertSharpToDistance(tSensors sensor);
-int compass(void);
+
 
 // Task prototypes
-task searchAlgoTask(void);
 task scanBallTask(void);
 task scanBoundaryTask(void);
 task scanObstacleTask(void);
@@ -90,16 +83,22 @@ task readSharpFC_Task(void);
 task readSharpFR_Task(void);
 task readSharpFL_Task(void);
 task readSharpBC_Task(void);
-task check_current_headingTask(void);
 task readIRTask(void);
 
 //Phase definition 
 void searchPhase(void) {
-    startTask(searchAlgoTask);
     startTask(scanBallTask);
     startTask(scanBoundaryTask);
     startTask(scanObstacleTask);
-
+while (true){
+       // Start with initial search algorithm based on first scan flag
+       if (firstScan) {
+        stopTask(scanBallTask)
+        firstScanSearchAlgo();
+        goToCenter();
+    } else {
+        startTask(spiralSearchAlgo);  // Start the main search algorithm (spiral or other)
+    }
     while (true) {
         if (isBall) {
             stopTask(searchAlgoTask);
@@ -107,9 +106,9 @@ void searchPhase(void) {
             stopTask(scanBoundaryTask);
             stopTask(scanObstacleTask);
             isBall = false;
-            currentState = COLLECT;
             break;
         }
+
         if (isBoundary || isFrontObstacle || isBackObstacle) {
             if (!robotMovingBack) { //means the robot is either stopping or moving forward 
                 stopTask(searchAlgoTask);
@@ -122,8 +121,8 @@ void searchPhase(void) {
                 if (!isBoundary) { //check if boundary is cleared
                     if (isFrontObstacle || isBackObstacle) {
                         if (robotMovingBack) { //means robot is moving backwards
-                            stopTask(searchAlgoTask);
-                            stopTask(scanBallTask);
+                            stopTask(firstScanSearchAlgo);
+                            stopTask(spiralSearchAlgo);
                         }
                         handleObstacle();
                         wait1Msec(200);
@@ -132,16 +131,16 @@ void searchPhase(void) {
                         }
                     }
                 }// if boundary is not cleared 
-                startTask(searchAlgoTask);
-                startTask(scanBallTask);
+                startTask(firstScanSearchAlgo);
+                startTask(spiralSearchAlgo);
                 wait1Msec(100);
                 continue;
             }
 
             if (isFrontObstacle || isBackObstacle) {
                 if (robotMovingBack) {
-                    stopTask(searchAlgoTask);
-                    stopTask(scanBallTask);
+                    stopTask(firstScanSearchAlgo);
+                    stopTask(spiralSearchAlgo);
                 }
                 handleObstacle();
                 wait1Msec(200);
@@ -149,13 +148,14 @@ void searchPhase(void) {
                 if (isFrontObstacle || isBackObstacle) {
                     handleObstacle();
                 }
-                startTask(searchAlgoTask);
-                startTask(scanBallTask);
+                startTask(firstScanSearchAlgo);
+                startTask(spiralSearchAlgo);
                 wait1Msec(100);
                 continue;
             }
         }
     }
+}
 }
 
 // Helper functions implementation
@@ -163,7 +163,7 @@ int distanceToTicks(float distance) {
     return distance / distancePerTick;
 }
 
-void moveDistance(float distance, bool backward = false) {
+void moveDistance(float distance, bool backward) {
     float realDistance = distance * 3.5;
     int targetTicks = distanceToTicks(realDistance);
 
@@ -221,123 +221,58 @@ void turnDegrees(float degrees, bool right) {
     motor[motorRight] = 0;
 }
 
-void checkBoundary(void) {
-    if ((IR_A_val == 1 && IR_C_val == 1) && (IR_B_val == 0 && IR_D_val == 0)) {
-        leftScanBoundary = true;
-        rightScanBoundary = false;
-    } else if ((IR_B_val == 1 && IR_D_val == 1) && (IR_A_val == 0 && IR_C_val == 0)) {
-        rightScanBoundary = true;
-        leftScanBoundary = false;
-    } 
+void firstScanSearchAlgo(void){
+        motor[FRONT_ROLLER] = -rollerSpeed;
+        moveDistance(1.4);
+        wait1Msec(1000);
+        moveDistance(1.4,true);
+        wait1Msec(1000);
+        deliverBall();
+        firstscan = false;
+
+}
+void spiralSearchAlgo(void) {
+    float distance = 0.5;  // Initial distance to move forward (in meters, adjust as needed)
+    float distanceIncrement = 0.3;  // How much to increase the distance each loop
+    float turnAngle = 30;  // Degrees to turn after each straight movement (adjust for tighter or looser spiral)
+    bool clockwise = true;  // Whether the robot should turn clockwise or counterclockwise
+
+    while (true) {  // Continue spiraling indefinitely (stop condition can be added)
+        moveDistance(distance, false);  // Move forward the specified distance
+        wait1Msec(500);  // Short pause before turning
+
+        turnDegrees(turnAngle, clockwise);  // Turn by the specified angle
+        wait1Msec(500);  // Short pause before next move
+
+        distance += distanceIncrement;  // Increase the distance for the next spiral loop
+    }
 }
 
-void scanSequenceLeft(void) {
-    turnDegrees(40, true);
+void goToCenter(void) {
+    //if robot is at the left side of the field
+    while(1){
+        turnDegrees(45);
+        wait1Msec(1000);
+        moveDistance(0.3);
+        if (isBoundary){
+            moveDistance(0.3,true);
+            wait1Msec(1000);    
+            turnDegrees(90,true);   
+            wait1Msec(1000);
+            moveDistance(0.5);
+            break;
+        }
+    }
+    //if robot is at the right side of the field
+    turnDegrees(45);
     wait1Msec(1000);
-    turnDegrees(40);
-    wait1Msec(1000);
+    moveDistance(0.3);
 }
 
-void scanSequenceRight(void) {
-    turnDegrees(40);
-    wait1Msec(1000);
-    turnDegrees(40, true);
-    wait1Msec(1000);
-}
-
-void searchingAlgoLeft(void) {
-    moveDistance(1.2);
-    wait1Msec(1000);
-    scanSequenceLeft();
-
-    moveDistance(0.3);
-    wait1Msec(1000);
-    scanSequenceLeft();
-
-    moveDistance(0.3);
-    wait1Msec(1000);
-    scanSequenceLeft();
-
-    moveDistance(1.8, true);
-    wait1Msec(1000);
-
-    turnDegrees(20, true);
-    wait1Msec(1000);
-
-    moveDistance(1.25);
-    wait1Msec(1000);
-
-    turnDegrees(40);
-    wait1Msec(1000);
-
-    turnDegrees(20, true);
-    wait1Msec(1000);
-
-    moveDistance(0.3);
-    wait1Msec(1000);
-    scanSequenceLeft();
-
-    moveDistance(0.3);
-    wait1Msec(1000);
-    scanSequenceLeft();
-
-    moveDistance(1.8, true);
-    wait1Msec(1000);
-}
-
-void searchingAlgoRight(void) {
-    moveDistance(1.2);
-    wait1Msec(1000);
-    scanSequenceRight();
-
-    moveDistance(0.3);
-    wait1Msec(1000);
-    scanSequenceRight();
-
-    moveDistance(0.3);
-    wait1Msec(1000);
-    scanSequenceRight();
-
-    moveDistance(1.8, true);
-    wait1Msec(1000);
-
-    turnDegrees(20);
-    wait1Msec(1000);
-
-    moveDistance(1.25);
-    wait1Msec(1000);
-
-    turnDegrees(40, true);
-    wait1Msec(1000);
-
-    turnDegrees(20);
-    wait1Msec(1000);
-
-    moveDistance(0.3);
-    wait1Msec(1000);
-    scanSequenceRight();
-
-    moveDistance(0.3);
-    wait1Msec(1000);
-    scanSequenceRight();
-
-    moveDistance(1.8, true);
-    wait1Msec(1000);
-}
-
-void searchingAlgo(void) {
-    checkBoundary();
-
-    if (leftScanBoundary) {
-        searchingAlgoLeft();
-    } else if (rightScanBoundary) {
-        searchingAlgoRight();
-    } 
-}
 
 void handleBoundary(void) {
     int IR_State = 0;
-    AcquireMutex(mutex);
+    
     if (IR_A_val == 0 && IR_B_val == 0 && IR_C_val == 1 && IR_D_val == 1) {
         IR_State = 1;
     } else if (IR_A_val == 0 && IR_B_val == 1 && IR_C_val == 0 && IR_D_val == 0) {
@@ -347,8 +282,7 @@ void handleBoundary(void) {
     } else if (IR_A_val == 1 && IR_B_val == 1 && IR_C_val == 0 && IR_D_val == 0) {
         IR_State = 4;
     }
-    ReleaseMutex(mutex);
-    
+
     switch (IR_State) {
         case 1:
             moveDistance(0.5, true);
@@ -374,7 +308,6 @@ void handleBoundary(void) {
 }
 
 void handleObstacle() {
-    AcquireMutex(mutex);
     if (robotMovingFront && isFrontObstacle) {
         moveDistance(0.3, true);
         turnDegrees(45);
@@ -382,12 +315,10 @@ void handleObstacle() {
         moveDistance(0.3);
         turnDegrees(45, true);
     }
-    ReleaseMutex(mutex);
 }
 
 void scanBoundary(void) {
     while(true) {
-        AcquireMutex(mutex);
         if ((IR_A_val == 0 && IR_B_val == 0) || (IR_A_val == 0 && IR_C_val == 0) || 
             (IR_A_val == 0 && IR_D_val == 0) || (IR_B_val == 0 && IR_C_val == 0) || 
             (IR_B_val == 0 && IR_D_val == 0) || (IR_C_val == 0 && IR_D_val == 0)) {
@@ -395,14 +326,12 @@ void scanBoundary(void) {
         } else {
             isBoundary = false;
         }
-        ReleaseMutex(mutex);
         wait1Msec(100);
     }
 }
 
 void scanObstacle() {
     while(true) {
-        AcquireMutex(mutex); 
         if (distFC >= 10.0 && distFC <= 80.0) {
             isFrontObstacle = true;
         } else if (distBC >= 10.0 && distBC <= 80.0) {
@@ -411,14 +340,12 @@ void scanObstacle() {
             isFrontObstacle = false;
             isBackObstacle = false;
         }
-        ReleaseMutex(mutex);
         wait1Msec(100);
     }
 }
 
 void scanBall() {
     while(true) {
-        AcquireMutex(mutex);
         if (((distFL >= 10.0 && distFL <= 70.0) || 
             (distFR >= 10.0 && distFR <= 70.0)) &&
             !(distFC >= 10.0 && distFC <= 70.0)) {
@@ -426,49 +353,19 @@ void scanBall() {
         } else {
             isBall = false;
         }
-        ReleaseMutex(mutex);
         wait1Msec(100);
     }
 }
 
 
-float compass(){
-	int MSBit = SensorValue[compass_MSB] > 0 ? 1 : 0;;
-	int Bittwo = SensorValue[compass_Bit2]> 0 ? 1 : 0;;
-	int Bitthree = SensorValue[compass_Bit3]> 0 ? 1 : 0;;
-	int LSBit = SensorValue[compass_LSB] > 0 ? 1 : 0;;
-	int num;
-	num = MSBit*pow(2,3) + Bittwo*pow(2,2) + Bitthree*2 + LSBit;
-	switch(num){
-	case 7: return 0; 		//W
-		break;
-	case 3: return 45; 		//SW
-		break;
-	case 11: return 90; 	//S
-		break;
-	case 9: return 135; 	//SE
-		break;
-	case 13: return 180;	//E
-		break;
-	case 12: return 225; 	//NE
-		break;
-	case 14: return 270; 	//W
-		break;
-	case 6: return 315; 	//NW
-		break;
-	}
-	return -1;
-}
 
 
 void readIR(void) {
     while(true) {
-        AcquireMutex(mutex);
         IR_A_val = SensorValue[IR_A] 
         IR_B_val = SensorValue[IR_B] 
         IR_C_val = SensorValue[IR_C] 
         IR_D_val = SensorValue[IR_D] 
-        ReleaseMutex(mutex);
         wait1Msec(50);
     }
 }
@@ -499,7 +396,6 @@ void convertSharpToDistance(tSensors sensor) {
         distance = 10.02 / pow(voltage, 1.26);
     }
 
-    AcquireMutex(mutex); 
     if (sensor == sharpFC) {
         distFC = distance;
     } else if (sensor == sharpFR) {
@@ -509,13 +405,27 @@ void convertSharpToDistance(tSensors sensor) {
     } else if (sensor == sharpBC) {
         distBC = distance;
     }
-    ReleaseMutex(mutex);
+}
+
+void deliver() {
+    FlapperPush();
+    wait1Msec(1000);
+    FlapperStop();
+
+    while(true) {
+        if (limitswitchBall_val == 1) {
+            FlapperReset();
+            wait1Msec(1000);
+            FlapperStop();
+            isDelivered = true;
+            break;
+        }
+        wait1Msec(100);
+    }
 }
 
 // Task implementations
-task searchAlgoTask(void) {
-    searchingAlgo();  
-}
+
 
 task scanBallTask(void) {
     scanBall();  
@@ -557,20 +467,12 @@ task readSharpBC_Task() {
     }
 }
 
-task check_current_headingTask(void) {
-    while(true) {
-        heading = compass();
-        wait1Msec(100);
-    }
-}
-
 task readIRTask(void) {
     readIR(); 
 }
 
 task main() {
     // Initialize basic tasks
-    startTask(check_current_headingTask);
     startTask(readIRTask);
 
     // Start sensor reading tasks
@@ -579,7 +481,7 @@ task main() {
     startTask(readSharpFL_Task);
     startTask(readSharpBC_Task);
     wait1Msec(500);
-
-    // Run search phase
+ 
+    // Start the search phase
     searchPhase();
 }
