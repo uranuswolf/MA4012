@@ -112,8 +112,7 @@ int SharpBC_Value; // Variable to store the value of the back center sharp senso
 bool robotMovingBack; // Flag to indicate if the robot is moving front or backwards 
 bool robotMovingFront; // Flag to indicate if the robot is moving front or backwards
 
-// Mutex for shared variables
-TMutex mutex;
+
 
 
 // ================================================================== Define constants ==================================================================
@@ -136,7 +135,6 @@ void searchPhase(void) {
   startTask(scanObstacleTask);  // Start the scan obstacle task
 
   while (true) {
-      AcquireMutex(mutex);  // Ensure mutual exclusion for shared variables
 
       // If ball is detected, stop tasks and switch to collect phase
       if (isBall) {
@@ -147,10 +145,10 @@ void searchPhase(void) {
 
           isBall = false;  // Reset the ball detection flag
           currentState = COLLECT;  // Change to collect phase
-          releaseMutex(mutex);  // Release the mutex
+
           break;  // Exit the loop and move to the collect phase
       }
-      AcquireMutex(mutex);
+      
       // If boundary or obstacle is detected, stop all tasks except scanBoundaryTask and scanObstacleTask
       if (isBoundary || isFrontObstacle || isBackObstacle) {
           if (!robotMovingBack) {  // Stop tasks only if robot is not moving backward
@@ -160,11 +158,11 @@ void searchPhase(void) {
 
           // Handle boundary first if detected
           if (isBoundary) {
-              releaseMutex(mutex);
+              
               handleBoundary();  // Handle boundary issue
               wait1Msec(200);  // Wait to see if scanBoundary() detects the boundary again
               // After handling boundary, check if it's resolved
-              AcquireMutex(mutex);
+              
               if (!isBoundary) {
                   // If boundary is resolved, check for obstacles again
                   if (isFrontObstacle || isBackObstacle) {
@@ -174,14 +172,14 @@ void searchPhase(void) {
                           stopTask(scanBallTask);    // Stop scan ball task
                       }
                       handleObstacle();  // Handle obstacle if detected
-                      releaseMutex(mutex);
+                      
                       wait1Msec(200);  // Wait before double-checking the obstacle
 
                       // After handling the obstacle, double-check if the obstacle is still present
-                      AcquireMutex(mutex);
+                      
                       if (isFrontObstacle || isBackObstacle) {
                           handleObstacle();  // Handle it again if still detected
-                          releaseMutex(mutex);
+                          
                       }
                   }
               }
@@ -194,7 +192,7 @@ void searchPhase(void) {
           }
 
           // Optionally, handle obstacle if detected and boundary wasn't detected
-          AcquireMutex(mutex);
+          
           if (isFrontObstacle || isBackObstacle) {
               // If obstacles are detected, handle them
               if (robotMovingBack) {
@@ -203,14 +201,14 @@ void searchPhase(void) {
             }
 
             handleObstacle();  // Handle obstacle if detected
-            releaseMutex(mutex);
+            
             wait1Msec(200);  // Wait before double-checking the obstaclen
             
               // After handling the obstacle, double-check if the obstacle is still present
-              AcquireMutex(mutex);
+              
               if (isFrontObstacle || isBackObstacle) {
                   handleObstacle();  // Handle it again if still detected
-                  releaseMutex(mutex);
+                  
               }
 
               // Resume tasks after handling the obstacle
@@ -231,7 +229,7 @@ void collectPhase(void) {
     
     // Keep checking for boundary and obstacles and if ball is picked in this phase, if not, keep doing the above 2 tasks concurrently
     while(true) {
-        AcquireMutex(mutex);  // Ensure mutual exclusion for shared variables
+          // Ensure mutual exclusion for shared variables
         if (isBallPicked) {  // Check if the ball has been successfully picked up
             stopTask(scanBoundaryTask);  // Stop the scan boundary task
             stopTask(scanObstacleTask);  // Stop the scan obstacle task
@@ -239,10 +237,9 @@ void collectPhase(void) {
             stopTask(pickUpBallTask);       // Stop the pick up ball task
             currentState = RETURN;  // Change to return phase when the ball is picked
             isBallPicked = false;  // Reset the flag
-            releaseMutex(mutex);  // Release the mutex
             break;  // Exit the while loop
     }
-    AcquireMutex(mutex);
+    
       // If boundary or obstacle is detected, stop all tasks except scanBoundaryTask and scanObstacleTask
       if (isBoundary || isFrontObstacle || isBackObstacle) {
           if (!robotMovingBack) {  // Stop tasks only if robot is not moving backward
@@ -252,11 +249,11 @@ void collectPhase(void) {
 
           // Handle boundary first if detected
           if (isBoundary) {
-              releaseMutex(mutex);
+              
               handleBoundary();  // Handle boundary issue
               wait1Msec(200);  // Wait to see if scanBoundary() detects the boundary again
               // After handling boundary, check if it's resolved
-              AcquireMutex(mutex);
+              
               if (!isBoundary) {
                   // If boundary is resolved, check for obstacles again
                   if (isFrontObstacle || isBackObstacle) {
@@ -266,14 +263,14 @@ void collectPhase(void) {
                           stopTask(pickUpBallTask);    // Stop scan ball task
                       }
                       handleObstacle();  // Handle obstacle if detected
-                      releaseMutex(mutex);
+                      
                       wait1Msec(200);  // Wait before double-checking the obstacle
 
                       // After handling the obstacle, double-check if the obstacle is still present
-                      AcquireMutex(mutex);
+                      
                       if (isFrontObstacle || isBackObstacle) {
                           handleObstacle();  // Handle it again if still detected
-                          releaseMutex(mutex);
+                          
                       }
                   }
               }
@@ -286,7 +283,7 @@ void collectPhase(void) {
           }
 
           // Optionally, handle obstacle if detected and boundary wasn't detected
-          AcquireMutex(mutex);
+          
           if (isFrontObstacle || isBackObstacle) {
               // If obstacles are detected, handle them
               if (robotMovingBack) {
@@ -295,14 +292,14 @@ void collectPhase(void) {
             }
 
             handleObstacle();  // Handle obstacle if detected
-            releaseMutex(mutex);
+            
             wait1Msec(200);  // Wait before double-checking the obstaclen
             
               // After handling the obstacle, double-check if the obstacle is still present
-              AcquireMutex(mutex);
+              
               if (isFrontObstacle || isBackObstacle) {
                   handleObstacle();  // Handle it again if still detected
-                  releaseMutex(mutex);
+                  
               }
 
               // Resume tasks after handling the obstacle
@@ -326,7 +323,7 @@ void returnPhase(void) {
          // Keep checking for boundary and obstacles and if robot successfully return to base in this phase, if not, keep doing the above 3 tasks concurrently
         while(true) {
 
-              AcquireMutex(mutex);  // Ensure mutual exclusion for shared variables
+                // Ensure mutual exclusion for shared variables
               if (reachedBase) {  // Check if robot has reached the base
                 stopTask(scanBoundaryTask);  // Stop the scan boundary task
                 stopTask(scanObstacleTask);  // Stop the scan obstacle task
@@ -334,11 +331,10 @@ void returnPhase(void) {
                 stopTask(releaseExtraBallsTask);  // Stop the release extra balls task
                 currentState = DELIVER;  // Change to deliver phase when robot reaches the base
                 reachedBase = false;  // Reset the flag
-                releaseMutex(mutex);  // Release the mutex
                 break;  // Exit the while loop
             }
 
-            AcquireMutex(mutex);
+            
             // If boundary or obstacle is detected, stop all tasks except scanBoundaryTask and scanObstacleTask
             if (isBoundary || isFrontObstacle || isBackObstacle) {
                 if (!robotMovingBack) {  // Stop tasks only if robot is not moving backward
@@ -348,11 +344,11 @@ void returnPhase(void) {
       
                 // Handle boundary first if detected
                 if (isBoundary) {
-                    releaseMutex(mutex);
+                    
                     handleBoundary();  // Handle boundary issue
                     wait1Msec(200);  // Wait to see if scanBoundary() detects the boundary again
                     // After handling boundary, check if it's resolved
-                    AcquireMutex(mutex);
+                    
                     if (!isBoundary) {
                         // If boundary is resolved, check for obstacles again
                         if (isFrontObstacle || isBackObstacle) {
@@ -362,14 +358,14 @@ void returnPhase(void) {
                                 stopTask(releaseExtraBallsTask);    
                             }
                             handleObstacle();  // Handle obstacle if detected
-                            releaseMutex(mutex);
+                            
                             wait1Msec(200);  // Wait before double-checking the obstacle
       
                             // After handling the obstacle, double-check if the obstacle is still present
-                            AcquireMutex(mutex);
+                            
                             if (isFrontObstacle || isBackObstacle) {
                                 handleObstacle();  // Handle it again if still detected
-                                releaseMutex(mutex);
+                                
                             }
                         }
                     }
@@ -382,7 +378,7 @@ void returnPhase(void) {
                 }
       
                 // Optionally, handle obstacle if detected and boundary wasn't detected
-                AcquireMutex(mutex);
+                
                 if (isFrontObstacle || isBackObstacle) {
                     // If obstacles are detected, handle them
                     if (robotMovingBack) {
@@ -391,14 +387,14 @@ void returnPhase(void) {
                   }
       
                   handleObstacle();  // Handle obstacle if detected
-                  releaseMutex(mutex);
+                  
                   wait1Msec(200);  // Wait before double-checking the obstaclen
                   
                     // After handling the obstacle, double-check if the obstacle is still present
-                    AcquireMutex(mutex);
+                    
                     if (isFrontObstacle || isBackObstacle) {
                         handleObstacle();  // Handle it again if still detected
-                        releaseMutex(mutex);
+                        
                     }
       
                     // Resume tasks after handling the obstacle
@@ -480,12 +476,12 @@ int compass(void){
 
 void readIR(void) {
   while(true) {
-      AcquireMutex(mutex);
+      
       IR_A = SensorValue[IR_A] < 300 ? 0 : 1; // Threshold for detection boundary is 300 
       IR_B = SensorValue[IR_B] < 300 ? 0 : 1; 
       IR_C = SensorValue[IR_C] < 300 ? 0 : 1;
       IR_D = SensorValue[IR_D] < 300 ? 0 : 1;
-      ReleaseMutex(mutex);
+      
       
       wait1Msec(50);
   }
@@ -493,11 +489,11 @@ void readIR(void) {
 
 void readlimitswitch(void) {
   while(true) {
-      AcquireMutex(mutex);
+      
       limitswitchLB = SensorValue[limitswitchLB];
       limitswitchRB = SensorValue[limitswitchRB];
       limitswitchBall = SensorValue[limitswitchBall];
-      ReleaseMutex(mutex);
+      
       
       wait1Msec(50);
   }
@@ -505,12 +501,12 @@ void readlimitswitch(void) {
 
 void scanBoundary(void) {
   while(true){
-  AcquireMutex(mutex);
+  
   if ((IR_A == 0 && IR_B == 0) || (IR_A == 0 && IR_C == 0) || (IR_A == 0 && IR_D == 0) || 
       (IR_B == 0 && IR_C == 0) || (IR_B == 0 && IR_D == 0) || (IR_C == 0 && IR_D == 0)) {
       isBoundary = true;
   }
-  ReleaseMutex(mutex);
+  
   wait1Msec(100); // Small delay to prevent locking up the CPU
   }
 }
@@ -519,7 +515,7 @@ void scanBoundary(void) {
 void handleBoundary(void){
 
     int IR_State = 0;
-    AcquireMutex(mutex);
+    
     if (IR_A == 0 && IR_B == 0 && IR_C == 1 && IR_D == 1) {
         IR_State = 1;  // Represents case 1
     } else if (IR_A == 0 && IR_B == 1 && IR_C == 0 && IR_D == 0) {
@@ -529,7 +525,7 @@ void handleBoundary(void){
     } else if (IR_A == 1 && IR_B == 1 && IR_C == 0 && IR_D == 0) {
         IR_State = 4;  // Represents case 4
     }
-    releaseMutex(mutex);
+    
     
     switch (IR_State) {
         case 1:
@@ -597,22 +593,8 @@ void convertSharpToDistance(tSensors sensor) {
   }
 
   // Update the global variable corresponding to the sensor
-  AcquireMutex(mutex); 
-  if (sensor == sharpFC) {
-      distFC = distance;
-  } else if (sensor == sharpFR) {
-      distFR = distance;
-  } else if (sensor == sharpFL) {
-      distFL = distance;
-  } else if (sensor == sharpBC) {
-      distBC = distance;
-  }
-  ReleaseMutex(mutex);
-}
-
 void scanObstacle() {
   while(true){
-    AcquireMutex(mutex); 
     // Read the distance from the front center sensor at one instance 
     if (distFC >= 10.0 && distFC <= 80.0){
       isFrontObstacle = true;
@@ -620,30 +602,26 @@ void scanObstacle() {
       isBackObstacle = true;
     }
     }
-    ReleaseMutex(mutex);
     wait1Msec(100); // Small delay to prevent locking up the CPU
   }
 }
 
 void handleObstacle(){
-  AcquireMutex(mutex);
+
   if (robotMovingFront && isFrontObstacle) {
       // SOME ACTIONS 
   } else if (robotMovingBack && isBackObstacle) {
       // SOME ACTIONS 
   }
-  ReleaseMutex(mutex);
 }
 
 // === Detects Ball === 
 void scanBall() {
   while(true){
-      AcquireMutex(mutex);  // Ensure mutual exclusion for shared variables
       if ((distFL >= 10.0 && distFL <= 70.0) || 
           (distFR >= 10.0 && distFR <= 70.0)) {
           isBall = true;  // Ball detected
       }
-      ReleaseMutex(mutex);  // Release the mutex after modifying shared variables
       wait1Msec(100);  // Small delay to prevent locking up the CPU
   }
 }
@@ -673,9 +651,7 @@ void returnToBase(void) {
         // Check if the robot is facing the base, and other conditions are met
         if (heading == 270 && (limitswitchLB == 1 || limitswitchRB == 1) && (IR_C == 0 && IR_D == 0)) {
             // If all conditions are met, mark the base as reached
-            AcquireMutex(mutex);  // Ensure mutual exclusion when accessing shared variable
             reachedBase = true;    // Set reachedBase flag to true
-            ReleaseMutex(mutex);   // Release mutex after updating reachedBase
             break;  // Exit the loop as the base has been reached
         }
 
@@ -696,9 +672,7 @@ void deliver(){
     wait1Msec(1000); //wait for 1 second to deliver the ball, Flapper at its positive maximum position
     FlapperStop(); //stop the flapper motor
     // Set the flag to indicate delivery is complete
-    AcquireMutex(mutex);
     isDelivered = true;
-    ReleaseMutex(mutex);
   }
   wait1Msec(100); // Small delay to prevent locking up the CPU
   }
@@ -709,9 +683,7 @@ void pickUpBall(void) {
   while (true) { //keep checking if the ball is picked up, if not front roller keeps rolling 
       if (SensorValue[limitswitchBall] == 0) {
           frontRollerStop();
-          AcquireMutex(mutex);
           isBallPicked = true;
-          ReleaseMutex(mutex);
           break;
       }
       wait1Msec(100);
@@ -720,7 +692,6 @@ void pickUpBall(void) {
 
 
 void MoveTowardsBall() {
-  AcquireMutex(mutex);  // Acquire mutex to ensure mutual exclusion for shared variables
 
   // Continue moving towards the ball until the condition is met
   while (distFL >= 20.0 || distFR >= 20.0) {
@@ -738,7 +709,6 @@ void MoveTowardsBall() {
       turnDegrees(30); // Turn left if the right sensor detects ball
   }
 
-  releaseMutex(mutex);  // Release the mutex once the condition is checked and motors are stopped
 }
 
 
@@ -758,17 +728,15 @@ void moveDistance(float distance, bool backward = false ) {
     if (backward) {
         motor[motorLeft] = 1.28 * basePower; //offset =1.28
         motor[motorRight] = -basePower;
-        AcquireMutex(mutex);
+
         robotMovingBack = true; // Set the flag to indicate the robot is moving backward
         robotMovingFront = false; // Set the flag to indicate the robot is moving backward
-        ReleaseMutex(mutex);
     } else {
         motor[motorLeft] = -1.28 * basePower;
         motor[motorRight] = basePower;
-        AcquireMutex(mutex);
         robotMovingFront = true; // Set the flag to indicate the robot is moving backward
         robotMovingBack = false;
-        ReleaseMutex(mutex);
+
     }
 
     while (abs(SensorValue[LEFT_ENCODER]) < targetTicks && abs(SensorValue[RIGHT_ENCODER]) < targetTicks) {
@@ -777,10 +745,8 @@ void moveDistance(float distance, bool backward = false ) {
 
     motor[motorLeft] = 0;
     motor[motorRight] = 0;
-    AcquireMutex(mutex);
     robotMovingFront = false; // Set the flag to indicate the robot is moving backward
     robotMovingBack = false; // Set the flag to indicate the robot is moving backward
-    ReleaseMutex(mutex);
 }
 
 // Turn left or right by angle (in degrees)
