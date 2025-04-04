@@ -3,6 +3,7 @@
 #pragma config(Sensor, dgtl11,  compass_Bit2,   sensorDigitalIn)
 #pragma config(Sensor, dgtl12,  compass_MSB,    sensorDigitalIn)
 
+// SE is when the back is on the base
 
 float compass(){
 	
