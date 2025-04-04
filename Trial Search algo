@@ -140,18 +140,20 @@ void scanSequenceRight() {
 void searchingAlgoLeft() {
     moveDistance(1.2);  //move a distance of 1.2 meter forward
     wait1Msec(1000);  //wait first before scan
-    scanSequenceLeft(); //execute scan function 
-
+    turnDegrees(40, true); //scan 40 degree to the right 
+    wait1Msec(1000);
+    turnDegrees(40); //scan 40 degree to the left back to straight
     moveDistance(0.3); //move a distance of 0.3 meter forward
-    wait1Msec(1000);  //wait first before scan
-    scanSequenceLeft(); //execute scan function
-
+    turnDegrees(40, true); //scan 40 degree to the right 
+    wait1Msec(1000);
+    turnDegrees(40); //scan 40 degree to the left back to straight
     moveDistance(0.3); //move a distance of 0.3 meter forward
-    wait1Msec(1000);  //wait first before scan
-    scanSequenceLeft(); //execute scan function
-
+    turnDegrees(40, true); //scan 40 degree to the right 
+    wait1Msec(1000);
+    turnDegrees(40); //scan 40 degree to the left back to straight
+    wait1Msec(1000);  //wait first
     moveDistance(1.8, true); //move a distance of 1.8 meter backward
-    wait1Msec(1000); //wait first before scan
+    wait1Msec(1000); //wait first 
 
     turnDegrees(20, true); //turn right 20 degrees 
     wait1Msec(1000); //wait first before move
@@ -171,14 +173,67 @@ void searchingAlgoLeft() {
     scanSequenceLeft(); //execute scan function
 
     moveDistance(1.8, true); //move a distance of 1.8 meter backward
-    wait1Msec(1000);//wait 
+    wait1Msec(1000);//wait
+
+    turnDegrees(20, true); //turn right 20 degrees 
+    wait1Msec(1000); //wait first before move
+    moveDistance(1.25); //move a distance of 1.25 meter forward
+    wait1Msec(1000); //wait first before turn
+    turnDegrees(40); //turn left 40 degrees 
+    wait1Msec(1000); //wait first before turn
+    turnDegrees(20, true); //turn right 20 degrees 
+    wait1Msec(1000);//wait first before move
+
+    moveDistance(0.3); //move a distance of 0.3 meter forward
+    wait1Msec(1000); //wait first before scan
+    scanSequenceLeft(); //execute scan function
+
+    moveDistance(0.3); //move a distance of 0.3 meter forward
+    wait1Msec(1000); //waitfirst before scan
+    scanSequenceLeft(); //execute scan function
+
+    moveDistance(1.8, true); //move a distance of 1.8 meter backward
+    wait1Msec(1000);//wait
 }
 
 // === Right Side Search Algorithm (Mirrored) ===
 void searchingAlgoRight() {
     moveDistance(1.2);
     wait1Msec(1000);
+    turnDegrees(40); //scan 40 degree to the left 
+    wait1Msec(1000);
+    turnDegrees(40, true); //scan 40 degree to the right back to straight
+    moveDistance(0.3); //move a distance of 0.3 meter forward
+    turnDegrees(40); //scan 40 degree to the left 
+    wait1Msec(1000);
+    turnDegrees(40, true); //scan 40 degree to the right back to straight
+    moveDistance(0.3); //move a distance of 0.3 meter forward
+    turnDegrees(40); //scan 40 degree to the left 
+    wait1Msec(1000);
+    turnDegrees(40, true); //scan 40 degree to the right back to straight
+    wait1Msec(1000);  //wait first
+    moveDistance(1.8, true); //move a distance of 1.8 meter backward
+    wait1Msec(1000); //wait first 
+
+    moveDistance(0.3);
+    wait1Msec(1000);
     scanSequenceRight();
+
+    moveDistance(0.3);
+    wait1Msec(1000);
+    scanSequenceRight();
+
+    moveDistance(1.8, true);
+    wait1Msec(1000);
+
+    turnDegrees(20); // turn left
+    wait1Msec(1000);
+    moveDistance(1.25);
+    wait1Msec(1000);
+    turnDegrees(40, true);
+    wait1Msec(1000);
+    turnDegrees(20);
+    wait1Msec(1000);
 
     moveDistance(0.3);
     wait1Msec(1000);
@@ -211,6 +266,7 @@ void searchingAlgoRight() {
     moveDistance(1.8, true);
     wait1Msec(1000);
 }
+
 
 // === Main Scanning Function ===
 
