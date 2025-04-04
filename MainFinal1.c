@@ -597,7 +597,7 @@ void returnToBase(void) {
         turnDegrees(degree, true);
         moveDistance(MAX_DISTANCE / 100.0, true);
 
-        if (heading == 270 && (limitswitchLB_val == 1 || limitswitchRB_val == 1) && 
+        if (heading == 270 && (limitswitchLB_val == 0 || limitswitchRB_val == 0) && 
             (IR_C_val == 0 && IR_D_val == 0)) {
             AcquireMutex(mutex);
             reachedBase = true;
