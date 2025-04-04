@@ -1,16 +1,13 @@
-#pragma config(Sensor, in3,    compass_LSB,           sensorAnalog)
-#pragma config(Sensor, in4,    compass_Bit3,           sensorAnalog)
-#pragma config(Sensor, in5,    compass_Bit2,           sensorAnalog)
-#pragma config(Sensor, in6,    compass_MSB,           sensorAnalog)
+#pragma config(Sensor, dgtl9, compass_LSB,    sensorDigitalIn)
+#pragma config(Sensor, dgtl10,  compass_Bit3,   sensorDigitalIn)
+#pragma config(Sensor, dgtl11,  compass_Bit2,   sensorDigitalIn)
+#pragma config(Sensor, dgtl12,  compass_MSB,    sensorDigitalIn)
 
 
 float compass(){
-	int MSBit = SensorValue[compass_MSB] > 0 ? 1 : 0;;
-	int Bittwo = SensorValue[compass_Bit2]> 0 ? 1 : 0;;
-	int Bitthree = SensorValue[compass_Bit3]> 0 ? 1 : 0;;
-	int LSBit = SensorValue[compass_LSB] > 0 ? 1 : 0;;
+	
 	int num;
-	num = MSBit*pow(2,3) + Bittwo*pow(2,2) + Bitthree*2 + LSBit;
+	num = SensorValue[compass_MSB]*pow(2,3) + SensorValue[compass_Bit2]*pow(2,2) + SensorValue[compass_Bit3]*2 + SensorValue[compass_LSB];
 	switch(num){
 	case 7: return 0; 		//W
 		break;
