@@ -37,6 +37,7 @@ float compass(){
 task check_current_heading(){
 	while(1){
 		int heading = compass();
+		 writeDebugStreamLine("compass", heading);
 	}
 }
 
