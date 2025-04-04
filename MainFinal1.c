@@ -12,10 +12,10 @@
 #pragma config(Sensor, dgtl7,  limitswitchBall,sensorDigitalIn)
 #pragma config(Sensor, dgtl1,  RIGHT_ENCODER,  sensorQuadEncoder) 
 #pragma config(Sensor, dgtl3,  LEFT_ENCODER,   sensorQuadEncoder) 
-#pragma config(Sensor, dgtl10, compass_LSB,    sensorDigitalIn)
+#pragma config(Sensor, dgtl8, compass_LSB,    sensorDigitalIn)
 #pragma config(Sensor, dgtl9,  compass_Bit3,   sensorDigitalIn)
-#pragma config(Sensor, dgtl8,  compass_Bit2,   sensorDigitalIn)
-#pragma config(Sensor, dgtl7,  compass_MSB,    sensorDigitalIn)
+#pragma config(Sensor, dgtl10,  compass_Bit2,   sensorDigitalIn)
+#pragma config(Sensor, dgtl11,  compass_MSB,    sensorDigitalIn)
 #pragma config(Motor,  port3,  motorLeft,      tmotorVex393_MC29, openLoop)
 #pragma config(Motor,  port2,  motorRight,     tmotorVex393_MC29, openLoop)
 #pragma config(Motor,  port8,  FRONT_ROLLER,   tmotorVex393_MC29, openLoop)
@@ -596,15 +596,20 @@ void scanBall() {
 
 void returnToBase(void) {
     while (true) {
-        float degree = abs(270 - heading);
-        turnDegrees(degree, true);
+        int target = 135;
+        int heading = compass();
+        int degree = heading - target;
+        if(degree <0){
+            turnDegrees(-degree, true);
+        }
+        else{
+            turnDegrees(degree);
+        }
         moveDistance(MAX_DISTANCE / 100.0, true);
 
-        if (heading == 270 && (limitswitchLB_val == 1 || limitswitchRB_val == 1) && 
+        if (heading == 135 && (limitswitchLB_val == 1 || limitswitchRB_val == 1) && 
             (IR_C_val == 0 && IR_D_val == 0)) {
-            AcquireMutex(mutex);
             reachedBase = true;
-            ReleaseMutex(mutex);
             break;
         }
         wait1Msec(100);
