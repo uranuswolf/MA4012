@@ -88,6 +88,7 @@ int IR_A_val = 1; // IR sensor A = 0 or 1, 0 means at boundary, 1 means not at b
 int IR_B_val = 1; // IR sensor B = 0 or 1
 int IR_C_val = 1; // IR sensor C = 0 or 1
 int IR_D_val = 1; // IR sensor D = 0 or 1
+bool robotStart = true; //Flag that it is the robots first start for the search algorithm
 bool isBoundary = false;  // Flag to indicate if the robot is at the boundary
 bool isBall = false;  // Flag to indicate if the ball is detected
 bool isFrontObstacle = false;  // Flag to indicate if an obstacle is detected
@@ -848,14 +849,40 @@ void searchingAlgoRight(void) {
     wait1Msec(1000);
 }
 
-void searchingAlgo(void) {
-    checkBoundary();
+void searchingAlgoSpiral(void){
+    int rotations = 5;
+    int currentDistance = 0;
+    int distanceIncrement = 0.2;
+    //turnDegrees might be needed
+    moveDistance(1.8); // drive to assumed center
+    wait1Msec(1000);
+    
+    for(int i = 0; i < rotations; i++){
+        moveDistance(currentDistance); // Move forward
+        turnDegrees(angleIncrement, true); // Turn
+        currentDistance += distanceIncrement; // Increase the distance for the next move
+    }
 
-    if (leftScanBoundary) {
-        searchingAlgoLeft();
-    } else if (rightScanBoundary) {
-        searchingAlgoRight();
-    } 
+}
+
+void searchingAlgo(void) {
+    if (robotStart){
+        checkBoundary();
+        if (leftScanBoundary) {
+            searchingAlgoLeft();
+            AcquireMutex(mutex);
+            robotStart = false;
+            ReleaseMutex(mutex);
+            
+        } else if (rightScanBoundary) {
+            searchingAlgoRight();
+            AcquireMutex(mutex);
+            robotStart = false;
+            ReleaseMutex(mutex);
+        } 
+    } else if (!robotStart){
+        searchingAlgoSpiral(); // need to make this 
+    }
 }
 
 // ================================================================== Task definitions ==================================================================
