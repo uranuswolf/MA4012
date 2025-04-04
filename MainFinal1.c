@@ -133,7 +133,7 @@ void searchPhase(void) {
     startTask(scanObstacleTask);
 
     while (true) {
-        AcquireMutex(mutex);
+          
         if (isBall) {
             stopTask(searchAlgoTask);
             stopTask(scanBallTask);
@@ -141,37 +141,37 @@ void searchPhase(void) {
             stopTask(scanObstacleTask);
             isBall = false;
             currentState = COLLECT;
-            ReleaseMutex(mutex);
+              
             break;
         }
-        ReleaseMutex(mutex);  // Release if condition not met
-        AcquireMutex(mutex);
+            // Release if condition not met
+          
         if (isBoundary || isFrontObstacle || isBackObstacle) {
             if (!robotMovingBack) {
                 stopTask(searchAlgoTask);
                 stopTask(scanBallTask);
-                ReleaseMutex(mutex);
+                  
             }
 
             if (isBoundary) {
-                ReleaseMutex(mutex);
+                  
                 handleBoundary();
                 wait1Msec(200);
-                AcquireMutex(mutex);
+                  
                 if (!isBoundary) {
                     if (isFrontObstacle || isBackObstacle) {
                         if (robotMovingBack) {
                             stopTask(searchAlgoTask);
                             stopTask(scanBallTask);
                         }
-                        ReleaseMutex(mutex);
+                          
                         handleObstacle();
                         wait1Msec(200);
-                        AcquireMutex(mutex);
+                          
                         if (isFrontObstacle || isBackObstacle) {
-                            ReleaseMutex(mutex);
+                              
                             handleObstacle();
-                            AcquireMutex(mutex);
+                              
                         }
                     }
                 }
@@ -179,7 +179,7 @@ void searchPhase(void) {
                 wait1Msec(200);
                 startTask(searchAlgoTask);
                 startTask(scanBallTask);
-                ReleaseMutex(mutex);
+                  
                 wait1Msec(100);
                 continue;
             }
@@ -189,23 +189,23 @@ void searchPhase(void) {
                     stopTask(searchAlgoTask);
                     stopTask(scanBallTask);
                 }
-                ReleaseMutex(mutex);
+                  
                 handleObstacle();
                 wait1Msec(200);
-                AcquireMutex(mutex);
+                  
                 if (isFrontObstacle || isBackObstacle) {
-                    ReleaseMutex(mutex);
+                      
                     handleObstacle();
-                    AcquireMutex(mutex);
+                      
                 }
                 startTask(searchAlgoTask);
                 startTask(scanBallTask);
-                ReleaseMutex(mutex);
+                  
                 wait1Msec(100);
                 continue;
             }
         }
-        ReleaseMutex(mutex);
+          
     }
 }
 
@@ -216,17 +216,17 @@ void collectPhase(void) {
     startTask(pickUpBallTask);
     
     while(true) {
-        AcquireMutex(mutex);
+          
         if (!isBall) {
             stopTask(scanBoundaryTask);
             stopTask(scanObstacleTask);
             stopTask(moveTowardsBallTask);
             stopTask(pickUpBallTask);
             currentState = SEARCH;
-            ReleaseMutex(mutex);
+              
             break;
         }
-        AcquireMutex(mutex);
+          
         if (isBallPicked) {
             stopTask(scanBoundaryTask);
             stopTask(scanObstacleTask);
@@ -234,10 +234,10 @@ void collectPhase(void) {
             stopTask(pickUpBallTask);
             currentState = RETURN;
             isBallPicked = false;
-            ReleaseMutex(mutex);
+              
             break;
         }
-        AcquireMutex(mutex);
+          
         if (isBoundary || isFrontObstacle || isBackObstacle) {
             if (!robotMovingBack) {
                 stopTask(moveTowardsBallTask);
@@ -245,30 +245,30 @@ void collectPhase(void) {
             }
 
             if (isBoundary) {
-                ReleaseMutex(mutex);
+                  
                 handleBoundary();
                 wait1Msec(200);
-                AcquireMutex(mutex);
+                  
                 if (!isBoundary) {
                     if (isFrontObstacle || isBackObstacle) {
                         if (robotMovingBack) {
                             stopTask(moveTowardsBallTask);
                             stopTask(pickUpBallTask);
                         }
-                        ReleaseMutex(mutex);
+                          
                         handleObstacle();
                         wait1Msec(200);
-                        AcquireMutex(mutex);
+                          
                         if (isFrontObstacle || isBackObstacle) {
-                            ReleaseMutex(mutex);
+                              
                             handleObstacle();
-                            AcquireMutex(mutex);
+                              
                         }
                     }
                 }
                 startTask(moveTowardsBallTask);
                 startTask(pickUpBallTask);
-                ReleaseMutex(mutex);
+                  
                 wait1Msec(100);
                 continue;
             }
@@ -278,23 +278,23 @@ void collectPhase(void) {
                     stopTask(moveTowardsBallTask);
                     stopTask(pickUpBallTask);
                 }
-                ReleaseMutex(mutex);
+                  
                 handleObstacle();
                 wait1Msec(200);
-                AcquireMutex(mutex);
+                  
                 if (isFrontObstacle || isBackObstacle) {
-                    ReleaseMutex(mutex);
+                      
                     handleObstacle();
-                    AcquireMutex(mutex);
+                      
                 }
                 startTask(moveTowardsBallTask);
                 startTask(pickUpBallTask);
-                ReleaseMutex(mutex);
+                  
                 wait1Msec(100);
                 continue;
             }
         }
-        ReleaseMutex(mutex);
+          
     }
 }
 
@@ -305,7 +305,7 @@ void returnPhase(void) {
     startTask(releaseExtraBallsTask);
     
     while(true) {
-        AcquireMutex(mutex);
+          
         if (reachedBase) {
             stopTask(scanBoundaryTask);
             stopTask(scanObstacleTask);
@@ -313,7 +313,7 @@ void returnPhase(void) {
             stopTask(releaseExtraBallsTask);
             currentState = DELIVER;
             reachedBase = false;
-            ReleaseMutex(mutex);
+              
             break;
         }
         
@@ -324,30 +324,30 @@ void returnPhase(void) {
             }
 
             if (isBoundary) {
-                ReleaseMutex(mutex);
+                  
                 handleBoundary();
                 wait1Msec(200);
-                AcquireMutex(mutex);
+                  
                 if (!isBoundary) {
                     if (isFrontObstacle || isBackObstacle) {
                         if (robotMovingBack) {
                             stopTask(returnToBaseTask);
                             stopTask(releaseExtraBallsTask);
                         }
-                        ReleaseMutex(mutex);
+                          
                         handleObstacle();
                         wait1Msec(200);
-                        AcquireMutex(mutex);
+                          
                         if (isFrontObstacle || isBackObstacle) {
-                            ReleaseMutex(mutex);
+                              
                             handleObstacle();
-                            AcquireMutex(mutex);
+                              
                         }
                     }
                 }
                 startTask(returnToBaseTask);
                 startTask(releaseExtraBallsTask);
-                ReleaseMutex(mutex);
+                  
                 wait1Msec(100);
                 continue;
             }
@@ -357,23 +357,23 @@ void returnPhase(void) {
                     stopTask(returnToBaseTask);
                     stopTask(releaseExtraBallsTask);
                 }
-                ReleaseMutex(mutex);
+                  
                 handleObstacle();
                 wait1Msec(200);
-                AcquireMutex(mutex);
+                  
                 if (isFrontObstacle || isBackObstacle) {
-                    ReleaseMutex(mutex);
+                      
                     handleObstacle();
-                    AcquireMutex(mutex);
+                      
                 }
                 startTask(returnToBaseTask);
                 startTask(releaseExtraBallsTask);
-                ReleaseMutex(mutex);
+                  
                 wait1Msec(100);
                 continue;
             }
         }
-        ReleaseMutex(mutex);
+          
     }
 }
 
@@ -436,30 +436,30 @@ int compass(void) {
 
 void readIR(void) {
     while(true) {
-        AcquireMutex(mutex);
+          
         IR_A_val = SensorValue[IR_A] < 300 ? 0 : 1;
         IR_B_val = SensorValue[IR_B] < 300 ? 0 : 1; 
         IR_C_val = SensorValue[IR_C] < 300 ? 0 : 1;
         IR_D_val = SensorValue[IR_D] < 300 ? 0 : 1;
-        ReleaseMutex(mutex);
+          
         wait1Msec(50);
     }
 }
 
 void readlimitswitch(void) {
     while(true) {
-        AcquireMutex(mutex);
+          
         limitswitchLB_val = SensorValue[limitswitchLB];
         limitswitchRB_val = SensorValue[limitswitchRB];
         limitswitchBall_val = SensorValue[limitswitchBall];
-        ReleaseMutex(mutex);
+          
         wait1Msec(50);
     }
 }
 
 void scanBoundary(void) {
     while(true) {
-        AcquireMutex(mutex);
+          
         if ((IR_A_val == 0 && IR_B_val == 0) || (IR_A_val == 0 && IR_C_val == 0) || 
             (IR_A_val == 0 && IR_D_val == 0) || (IR_B_val == 0 && IR_C_val == 0) || 
             (IR_B_val == 0 && IR_D_val == 0) || (IR_C_val == 0 && IR_D_val == 0)) {
@@ -467,14 +467,14 @@ void scanBoundary(void) {
         } else {
             isBoundary = false;
         }
-        ReleaseMutex(mutex);
+          
         wait1Msec(100);
     }
 }
 
 void handleBoundary(void) {
     int IR_State = 0;
-    AcquireMutex(mutex);
+      
     if (IR_A_val == 0 && IR_B_val == 0 && IR_C_val == 1 && IR_D_val == 1) {
         IR_State = 1;
     } else if (IR_A_val == 0 && IR_B_val == 1 && IR_C_val == 0 && IR_D_val == 0) {
@@ -484,7 +484,7 @@ void handleBoundary(void) {
     } else if (IR_A_val == 1 && IR_B_val == 1 && IR_C_val == 0 && IR_D_val == 0) {
         IR_State = 4;
     }
-    ReleaseMutex(mutex);
+      
     
     switch (IR_State) {
         case 1:
@@ -536,7 +536,7 @@ void convertSharpToDistance(tSensors sensor) {
         distance = 10.02 / pow(voltage, 1.26);
     }
 
-    AcquireMutex(mutex); 
+       
     if (sensor == sharpFC) {
         distFC = distance;
     } else if (sensor == sharpFR) {
@@ -546,12 +546,12 @@ void convertSharpToDistance(tSensors sensor) {
     } else if (sensor == sharpBC) {
         distBC = distance;
     }
-    ReleaseMutex(mutex);
+      
 }
 
 void scanObstacle() {
     while(true) {
-        AcquireMutex(mutex); 
+           
         if (distFC >= 10.0 && distFC <= 40.0) {
             isFrontObstacle = true;
         } else if (distBC >= 10.0 && distBC <= 40.0) {
@@ -560,13 +560,13 @@ void scanObstacle() {
             isFrontObstacle = false;
             isBackObstacle = false;
         }
-        ReleaseMutex(mutex);
+          
         wait1Msec(100);
     }
 }
 
 void handleObstacle() {
-    AcquireMutex(mutex);
+      
     if (robotMovingFront && isFrontObstacle) {
         // Obstacle avoidance logic for front obstacle
         moveDistance(0.3, true);
@@ -576,12 +576,12 @@ void handleObstacle() {
         moveDistance(0.3);
         turnDegrees(45, true);
     }
-    ReleaseMutex(mutex);
+      
 }
 
 void scanBall() {
     while(true) {
-        AcquireMutex(mutex);
+          
         if (((distFL >= 10.0 && distFL <= 70.0) || 
             (distFR >= 10.0 && distFR <= 70.0)) &&
             !(distFC >= 10.0 && distFC <= 70.0)) {
@@ -589,7 +589,7 @@ void scanBall() {
         } else {
             isBall = false;
         }
-        ReleaseMutex(mutex);
+          
         wait1Msec(100);
     }
 }
@@ -626,9 +626,9 @@ void deliver() {
             FlapperReset();
             wait1Msec(1000);
             FlapperStop();
-            AcquireMutex(mutex);
+              
             isDelivered = true;
-            ReleaseMutex(mutex);
+              
             break;
         }
         wait1Msec(100);
@@ -640,9 +640,9 @@ void pickUpBall(void) {
     while (true) {
         if (SensorValue[limitswitchBall] == 0) {
             frontRollerStop();
-            AcquireMutex(mutex);
+              
             isBallPicked = true;
-            ReleaseMutex(mutex);
+              
             break;
         }
         wait1Msec(100);
@@ -651,14 +651,14 @@ void pickUpBall(void) {
 
 void MoveTowardsBall() {
     while (true) {
-        AcquireMutex(mutex);
+          
         if (!((distFL >= 10.0 && distFL <= 70.0) || 
              (distFR >= 10.0 && distFR <= 70.0)) ||
              (distFC >= 10.0 && distFC <= 70.0)) {
             motor[motorLeft] = 0;
             motor[motorRight] = 0;
             isBall = false;
-            ReleaseMutex(mutex);
+              
             break;
         }
 
@@ -670,18 +670,18 @@ void MoveTowardsBall() {
             motor[motorRight] = 0;
             
             if (distFL < 20.0) {
-                ReleaseMutex(mutex);
+                  
                 turnDegrees(30);
                 moveDistance(0.1);
-                AcquireMutex(mutex);
+                  
             } else if (distFR < 20.0) {
-                ReleaseMutex(mutex);
+                  
                 turnDegrees(30,true);
                 moveDistance(0.1);
-                AcquireMutex(mutex);
+                  
             }
         }
-        ReleaseMutex(mutex);
+          
         wait1Msec(50);
     }
 }
@@ -700,17 +700,17 @@ void moveDistance(float distance, bool backward) {
     if (backward) {
         motor[motorLeft] = 1.28 * basePower;
         motor[motorRight] = -basePower;
-        AcquireMutex(mutex);
+          
         robotMovingBack = true;
         robotMovingFront = false;
-        ReleaseMutex(mutex);
+          
     } else {
         motor[motorLeft] = -1.28 * basePower;
         motor[motorRight] = basePower;
-        AcquireMutex(mutex);
+          
         robotMovingFront = true;
         robotMovingBack = false;
-        ReleaseMutex(mutex);
+          
     }
 
     while (abs(SensorValue[LEFT_ENCODER]) < targetTicks && 
@@ -720,10 +720,10 @@ void moveDistance(float distance, bool backward) {
 
     motor[motorLeft] = 0;
     motor[motorRight] = 0;
-    AcquireMutex(mutex);
+      
     robotMovingFront = false;
     robotMovingBack = false;
-    ReleaseMutex(mutex);
+      
 }
 
 void turnDegrees(float degrees, bool right) {
