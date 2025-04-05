@@ -84,10 +84,20 @@ typedef enum {
 
 // ================================================================== Global variables ==================================================================
 RobotState currentState = SEARCH;  // Start with the 'Search' phase
-int IR_A_val = 1; // IR sensor A = 0 or 1, 0 means at boundary, 1 means not at boundary
-int IR_B_val = 1; // IR sensor B = 0 or 1
-int IR_C_val = 1; // IR sensor C = 0 or 1
-int IR_D_val = 1; // IR sensor D = 0 or 1
+
+int IR_A_val; // Line follow 0 means at boundary, 1 means not at boundary
+int IR_B_val;
+int IR_C_val;
+int IR_D_val ;
+int limitswitchLB_val;  // 0 means pressed,  1 means not pressed 
+int limitswitchRB_val;  
+int limitswitchBall_val; 
+int heading; // Variable to store the compass heading
+int SharpFC_Value; // Variable to store the value of the front center sharp sensor
+int SharpFR_Value; // Variable to store the value of the front right sharp sensor
+int SharpFL_Value; // Variable to store the value of the front left sharp sensor
+int SharpBC_Value; // Variable to store the value of the back center sharp sensor
+
 bool isBoundary = false;  // Flag to indicate if the robot is at the boundary
 bool isBall = false;  // Flag to indicate if the ball is detected
 bool isFrontObstacle = false;  // Flag to indicate if an obstacle is detected
@@ -97,23 +107,20 @@ bool reachedBase = false;  // Flag to indicate if the robot has reached the base
 bool isDelivered = false;  // Flag to indicate if the ball is delivered
 bool leftScanBoundary = false; //Flag to indicate if the left boundary is detected
 bool rightScanBoundary = false; //Flag to indicate if the right boundary is detected
-int heading; // Variable to store the compass heading
-int limitswitchLB_val = 1; // Variable to store the value of the left limit switch, 1 means not pressed 
-int limitswitchRB_val = 1; // Variable to store the value of the right limit switch
-int limitswitchBall_val = 1; // Variable to store the value of the ball limit switch
+bool robotMovingBack = false; // Flag to indicate if the robot is moving backwards
+bool robotMovingFront = false; // Flag to indicate if the robot is moving forwards
+bool firstStart = true;
+
+
 float distFC = 0.0; // Variable to store the distance from the front center sharp sensor
 float distFR = 0.0; // Variable to store the distance from the front right sharp sensor
 float distFL = 0.0; // Variable to store the distance from the front left sharp sensor
 float distBC = 0.0; // Variable to store the distance from the back center sharp sensor
-int SharpFC_Value; // Variable to store the value of the front center sharp sensor
-int SharpFR_Value; // Variable to store the value of the front right sharp sensor
-int SharpFL_Value; // Variable to store the value of the front left sharp sensor
-int SharpBC_Value; // Variable to store the value of the back center sharp sensor
-bool robotMovingBack = false; // Flag to indicate if the robot is moving backwards
-bool robotMovingFront = false; // Flag to indicate if the robot is moving forwards
 
-// Mutex for shared variables
-TMutex mutex;
+
+
+
+
 
 // ================================================================== Define constants ==================================================================
 const int basePower = 50;  // Power level for the base motor
@@ -122,11 +129,12 @@ const float wheelCircumference = wheelDiameter * PI; // meters
 const int ticksPerRevolution = 90; // encoder ticks per revolution
 const float distancePerTick = wheelCircumference / ticksPerRevolution; // meters per tick
 const float wheelBase = 0.188; // distance between wheels (meters)
-const int rollerSpeed = 127; // speed of the roller motor
+const int rollerSpeed = 127; // speed of the roller motors
 const int MAX_DISTANCE = 300; // 300cm max distance for return
 
 // ================================================================== Phase functions ==================================================================
 void searchPhase(void) {
+    //Do all these tasks simultaneously 
     startTask(searchAlgoTask);
     startTask(scanBallTask);
     startTask(scanBoundaryTask);
@@ -416,23 +424,29 @@ void FlapperReset(void) {
     motor[BACK_ROLLER] = rollerSpeed; 
 }
 
-int compass(void) {
-    int num;
-    num = SensorValue[compass_MSB]*8 + SensorValue[compass_Bit2]*4 + 
-          SensorValue[compass_Bit3]*2 + SensorValue[compass_LSB];
+void compass(void) {
+    while (true){
+    // Read 4-bit compass value from digital sensors
+    int compassValue = SensorValue[compass_MSB] * 8 + 
+                       SensorValue[compass_Bit2] * 4 + 
+                       SensorValue[compass_Bit3] * 2 + 
+                       SensorValue[compass_LSB];
     
-    switch(num) {
-        case 7: return 0;    // W
-        case 3: return 45;   // SW
-        case 11: return 90;  // S
-        case 9: return 135;  // SE
-        case 13: return 180; // E
-        case 12: return 225; // NE
-        case 14: return 270; // N
-        case 6: return 315;  // NW
+    // Map compass value to heading (degrees)
+    switch(compassValue) {
+        case 7:  heading = 0;    break;   // West
+        case 3:  heading = 45;   break;   // Southwest
+        case 11: heading = 90;   break;   // South
+        case 9:  heading = 135;  break;   // Southeast
+        case 13: heading = 180;  break;   // East
+        case 12: heading = 225;  break;   // Northeast
+        case 14: heading = 270;  break;   // North
+        case 6:  heading = 315;  break;   // Northwest
     }
-    return -1;
+    wait1Msec(50); // Adjust delay as needed
+    }
 }
+
 
 void readIR(void) {
     while(true) {
@@ -442,73 +456,83 @@ void readIR(void) {
         IR_C_val = SensorValue[IR_C] < 300 ? 0 : 1;
         IR_D_val = SensorValue[IR_D] < 300 ? 0 : 1;
           
-        wait1Msec(50);
+        wait1Msec(100);
     }
 }
 
 void readlimitswitch(void) {
+    
     while(true) {
           
         limitswitchLB_val = SensorValue[limitswitchLB];
         limitswitchRB_val = SensorValue[limitswitchRB];
         limitswitchBall_val = SensorValue[limitswitchBall];
           
-        wait1Msec(50);
-    }
-}
-
-void scanBoundary(void) {
-    while(true) {
-          
-        if ((IR_A_val == 0 && IR_B_val == 0) || (IR_A_val == 0 && IR_C_val == 0) || 
-            (IR_A_val == 0 && IR_D_val == 0) || (IR_B_val == 0 && IR_C_val == 0) || 
-            (IR_B_val == 0 && IR_D_val == 0) || (IR_C_val == 0 && IR_D_val == 0)) {
-            isBoundary = true;
-        } else {
-            isBoundary = false;
-        }
-          
         wait1Msec(100);
     }
 }
 
-void handleBoundary(void) {
-    int IR_State = 0;
-      
-    if (IR_A_val == 0 && IR_B_val == 0 && IR_C_val == 1 && IR_D_val == 1) {
-        IR_State = 1;
-    } else if (IR_A_val == 0 && IR_B_val == 1 && IR_C_val == 0 && IR_D_val == 0) {
-        IR_State = 2;
-    } else if (IR_A_val == 1 && IR_B_val == 0 && IR_C_val == 1 && IR_D_val == 0) {
-        IR_State = 3;
-    } else if (IR_A_val == 1 && IR_B_val == 1 && IR_C_val == 0 && IR_D_val == 0) {
-        IR_State = 4;
-    }
-      
-    
-    switch (IR_State) {
-        case 1:
-            moveDistance(0.5, true);
-            wait1Msec(1000);
-            turnDegrees(180); 
-            wait1Msec(1000);
-            break;
-        case 2:
-            turnDegrees(90);
-            break;
-        case 3:
-            turnDegrees(90, true);
-            break;
-        case 4:
-            moveDistance(0.5);
-            break;
-        default:
-            moveDistance(0.3, true);
-            wait1Msec(1000);
-            turnDegrees(45);
-            break;
+void scanBoundary(void) {
+
+    while(true) {
+        // Set boundary to true if any IR sensor reads 0
+        if (IR_A_val == 0 || IR_B_val == 0 || IR_C_val == 0 || IR_D_val == 0) {
+            isBoundary = true;
+        } 
+        else {
+            isBoundary = false;
+        }
+        wait1Msec(50);
     }
 }
+
+void handleBoundary(void) {
+        // Sensor Key:
+        // IR_A_val = FR (Front Right), 0=boundary
+        // IR_B_val = FL (Front Left), 0=boundary  
+        // IR_C_val = BR (Back Right), 0=boundary
+        // IR_D_val = BL (Back Left), 0=boundary
+    
+        // 1. Full frontal collision
+        if (!IR_A_val && !IR_B_val) {         // FR+FL both detect boundary
+            moveDistance(0.3, true);          // Back up
+            turnDegrees(135);                 // Sharp left turn
+        }
+        // 2. Front-right corner
+        else if (!IR_A_val && !IR_C_val) {    // FR+BR detect
+            moveDistance(0.25, true);         // Gentle backup
+            turnDegrees(120);                 // Hard left turn
+        }
+        // 3. Front-left corner  
+        else if (!IR_B_val && !IR_D_val) {    // FL+BL detect
+            moveDistance(0.25, true);
+            turnDegrees(120, true);           // Hard right turn
+        }
+        // 4. Right side scrape
+        else if (!IR_A_val) {                 // Only FR detects
+            moveDistance(0.15, true);         // Tiny backup
+            turnDegrees(60);                  // Moderate left turn
+        }
+        // 5. Left side scrape
+        else if (!IR_B_val) {                 // Only FL detects
+            moveDistance(0.15, true);
+            turnDegrees(60, true);            // Moderate right turn
+        }
+        // 6. Rear collision
+        else if (!IR_C_val || !IR_D_val) {    // Either back sensor
+            moveDistance(0.3);                // Drive forward
+            turnDegrees(90);                  // Quarter turn
+        }
+        // 7. Default safety
+        else {
+            moveDistance(0.2, true);          // Default backup
+            turnDegrees(90);                  // Default turn
+        }
+    
+        isBoundary = false;
+        wait1Msec(200);  // Let sensors stabilize
+    }
+
 
 void convertSharpToDistance(tSensors sensor) {  
     int sum = 0;
@@ -552,16 +576,15 @@ void convertSharpToDistance(tSensors sensor) {
 void scanObstacle() {
     while(true) {
            
-        if (distFC >= 10.0 && distFC <= 40.0) {
+        if (distFC >= 10.0 && distFC <= 40.0) { //the robot detects an obstacle if the obstacle is between 10cm to 40cm away from the robot's front
             isFrontObstacle = true;
-        } else if (distBC >= 10.0 && distBC <= 40.0) {
+        }if (distBC >= 10.0 && distBC <= 40.0) { //the robot detects an obstacle if the obstacle is between 10cm to 40cm away from the robot's back
             isBackObstacle = true;
-        } else {
+        } else { // the robot does not detect any obstacle
             isFrontObstacle = false;
             isBackObstacle = false;
         }
-          
-        wait1Msec(100);
+        wait1Msec(50);
     }
 }
 
@@ -580,17 +603,17 @@ void handleObstacle() {
 }
 
 void scanBall() {
+    
     while(true) {
           
         if (((distFL >= 10.0 && distFL <= 70.0) || 
             (distFR >= 10.0 && distFR <= 70.0)) &&
-            !(distFC >= 10.0 && distFC <= 70.0)) {
+            !(distFC >= 10.0 && distFC <= 40.0)) {
             isBall = true;
         } else {
             isBall = false;
         }
-          
-        wait1Msec(100);
+        wait1Msec(50);
     }
 }
 
@@ -600,7 +623,7 @@ void returnToBase(void) {
         int heading = compass();
         int degree = heading - target;
         if(degree <0){
-            turnDegrees(-degree, true);
+            turnDegrees(degree, true);
         }
         else{
             turnDegrees(degree);
@@ -612,7 +635,7 @@ void returnToBase(void) {
             reachedBase = true;
             break;
         }
-        wait1Msec(100);
+        wait1Msec(50);
     }
 }
 
@@ -755,6 +778,7 @@ void turnDegrees(float degrees, bool right) {
 }
 
 void checkBoundary(void) {
+
     if ((IR_A_val == 1 && IR_C_val == 1) && (IR_B_val == 0 && IR_D_val == 0)) {
         leftScanBoundary = true;
         rightScanBoundary = false;
@@ -762,115 +786,87 @@ void checkBoundary(void) {
         rightScanBoundary = true;
         leftScanBoundary = false;
     } 
+
 }
 
-void scanSequenceLeft(void) {
-    turnDegrees(40, true);
-    wait1Msec(1000);
-    turnDegrees(40);
-    wait1Msec(1000);
-}
-
-void scanSequenceRight(void) {
-    turnDegrees(40);
-    wait1Msec(1000);
-    turnDegrees(40, true);
-    wait1Msec(1000);
-}
-
-void searchingAlgoLeft(void) {
-    moveDistance(1.2);
-    wait1Msec(1000);
-    scanSequenceLeft();
-
-    moveDistance(0.3);
-    wait1Msec(1000);
-    scanSequenceLeft();
-
-    moveDistance(0.3);
-    wait1Msec(1000);
-    scanSequenceLeft();
-
-    moveDistance(1.8, true);
-    wait1Msec(1000);
-
-    turnDegrees(20, true);
-    wait1Msec(1000);
-
-    moveDistance(1.25);
-    wait1Msec(1000);
-
-    turnDegrees(40);
-    wait1Msec(1000);
-
-    turnDegrees(20, true);
-    wait1Msec(1000);
-
-    moveDistance(0.3);
-    wait1Msec(1000);
-    scanSequenceLeft();
-
-    moveDistance(0.3);
-    wait1Msec(1000);
-    scanSequenceLeft();
-
-    moveDistance(1.8, true);
-    wait1Msec(1000);
-}
-
-void searchingAlgoRight(void) {
-    moveDistance(1.2);
-    wait1Msec(1000);
-    scanSequenceRight();
-
-    moveDistance(0.3);
-    wait1Msec(1000);
-    scanSequenceRight();
-
-    moveDistance(0.3);
-    wait1Msec(1000);
-    scanSequenceRight();
-
-    moveDistance(1.8, true);
-    wait1Msec(1000);
-
-    turnDegrees(20);
-    wait1Msec(1000);
-
-    moveDistance(1.25);
-    wait1Msec(1000);
-
-    turnDegrees(40, true);
-    wait1Msec(1000);
-
-    turnDegrees(20);
-    wait1Msec(1000);
-
-    moveDistance(0.3);
-    wait1Msec(1000);
-    scanSequenceRight();
-
-    moveDistance(0.3);
-    wait1Msec(1000);
-    scanSequenceRight();
-
-    moveDistance(1.8, true);
-    wait1Msec(1000);
-}
-
-void searchingAlgo(void) {
-    if (first)
-    checkBoundary();
-
+void scanSequence(void) {
     if (leftScanBoundary) {
-        searchingAlgoLeft();
-    } else if (rightScanBoundary) {
-        searchingAlgoRight();
+        turnDegrees(20, true); //angle should not be too wide as the main objective to get the first ball 
+        wait1Msec(1000);
+        turnDegrees(20);
+        wait1Msec(1000);
+    } 
+    else if (rightScanBoundary) {
+        turnDegrees(20); //angle should not be too wide as the main objective to get the first ball
+        wait1Msec(1000);
+        turnDegrees(20, true);
+        wait1Msec(1000);
     } 
 }
 
+// Main searching algorithm
+void searchingAlgo() {
+    checkBoundary(); // Update boundary flags once 
+    wait1Msec(500); 
+    moveDistance(1.0); //move up to the first row 
+    wait1Msec(500); 
+
+    if (leftScanBoundary && firstStart && !isDelivered) {
+       // if robot is at the left boundary and in its 1st search and has not delieverd any balls
+        scanSequence();     // Scan the 1st row 
+
+        moveDistance(0.2); //assuming the 1st row is 0.2m, move up to the 2nd row
+        wait1Msec(500);
+        scanSequence(); //Scan the 2nd row
+        wait1Msec(500);
+
+
+        moveDistance(0.2); //move up to the 3rd row 
+        wait1Msec(500);
+        scanSequence(); //Scan the 3rd row 
+        wait1Msec(500);
+
+        firstStart = false;
+    } 
+    else if (rightScanBoundary && firstStart && !isDelivered) {
+        // if robot is at the right boundary and in its 1st search and has not delieverd any balls
+        scanSequence();      
+
+        moveDistance(0.2); //assuming the 1st row is 0.2m, move up to the 2nd row
+        wait1Msec(500);
+        scanSequence(); //Scan the 2nd row
+        wait1Msec(500);
+
+
+        moveDistance(0.2); //move up to the 3rd row 
+        wait1Msec(500);
+        scanSequence(); //Scan the 3rd row 
+        wait1Msec(500);
+
+        firstStart = false;
+    } 
+    else if (!firstStart) {
+        // Assume robot delivered the ball back to the same starting position 
+        if (rightScanBoundary) {
+            turnDegrees(90);   // Turn left if right boundary detected
+            wait1Msec(500);
+            moveDistance(1.0);    // Move forward
+
+//          can be the code for spiral
+        } 
+        else if (leftScanBoundary) {
+            turnDegrees(90,true);  // Turn right if left boundary detected
+            wait1Msec(500);
+            moveDistance(1.0);        // Move forward
+//          can be the code for spiral
+        }
+    }
+}
+
+
 // ================================================================== Task definitions ==================================================================
 task searchAlgoTask(void) {
+    //Function will only run once 
     searchingAlgo();  
 }
 
@@ -895,6 +891,7 @@ task deliverTask(void) {
 }
 
 task readIRTask(void) {
+    //Function will run indefinitely due to while loop in readIR()
     readIR(); 
 } 
 
@@ -904,10 +901,7 @@ task releaseExtraBallsTask(void) {
 }
 
 task check_current_headingTask(void) {
-    while(true) {
-        heading = compass();
-        wait1Msec(100);
-    }
+    compass();
 }
 
 task moveTowardsBallTask(void) {
@@ -951,8 +945,6 @@ task main() {
     // Initialize basic tasks
     startTask(check_current_headingTask);
     startTask(readIRTask);
-
-    // Start sensor reading tasks
     startTask(readSharpFC_Task);
     startTask(readSharpFR_Task);
     startTask(readSharpFL_Task);
@@ -973,8 +965,6 @@ task main() {
             case DELIVER:
                 deliverPhase();
                 break;
-            default:
-                currentState = SEARCH;
         }
         wait1Msec(100);
     }
