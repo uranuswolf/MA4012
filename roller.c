@@ -33,12 +33,13 @@
 #define DISTANCE_PER_TICK (CIRCUMFERENCE / TICKS_PER_REV) // meters per tick
 
 // ================================================================== Types & Enums ==================================================================
-typedef enum {
+typedef enum RobotState {
     SEARCH,
     COLLECT,
     RETURN,
     DELIVER
 } RobotState;
+
 
 typedef struct {
     float distFC;
@@ -87,13 +88,10 @@ void returnPhase(void);
 void deliverPhase(void);
 
 // Helper functions
-void readSensors(void);
 void handleBoundary(void);
 void handleObstacle(void);
 void frontRollerControl(int speed);
 void flapperControl(int speed);
-int getCompassHeading(void);
-void checkBoundary(void);
 void searchingAlgo(void);
 void moveTowardsBall(void);
 void decideTurn(float leftDist, float rightDist);
@@ -104,10 +102,18 @@ void returnToBase(void);
 void boundaryInterrupt(void);
 void obstacleInterrupt(void);
 
-//Tasks functions
-void task moveTowardsBallTask(void);
-void task returnToBaseTask(void);
-void task searchingBallTask(void);
+// ================================================================== Tasks definition ==================================================================
+
+task moveTowardsBallTask() {
+    moveTowardsBall();
+}
+task returnToBaseTask(){
+    returnToBase();
+}
+
+task searchingBallTask(){
+    searchingAlgo();
+}
 
 
 // ================================================================== Interrupt Handlers ==================================================================
@@ -219,16 +225,6 @@ void moveDistance(float distance, bool backward) {
     }
 
     stopMotors();
-    
-    // Boundary has priority over obstacle
-    if (boundaryInterruptFlag) {
-        handleBoundary();
-        boundaryInterruptFlag = false;
-    }
-    else if (obstacleInterruptFlag) {
-        handleObstacle();
-        obstacleInterruptFlag = false;
-    }
 }
 
 void turnDegrees(float degrees, bool right) {
@@ -249,18 +245,7 @@ void turnDegrees(float degrees, bool right) {
           !obstacleInterruptFlag) {
         wait1Msec(10);
     }
-
     stopMotors();
-    
-    // Boundary has priority over obstacle
-    if (boundaryInterruptFlag) {
-        handleBoundary();
-        boundaryInterruptFlag = false;
-    }
-    else if (obstacleInterruptFlag) {
-        handleObstacle();
-        obstacleInterruptFlag = false;
-    }
 }
 
 // ================================================================== State Functions ==================================================================
@@ -274,12 +259,17 @@ void searchPhase() {
         }    
         // Check for interrupts
         if (boundaryInterruptFlag) {
+            stopTask(searchingBallTask);
             handleBoundary();
             boundaryInterruptFlag = false;
+            startTask(searchingBallTask); // Restart searching after handling boundary
         }
         else if (obstacleInterruptFlag) {
+            stopTask(searchingBallTask);
             handleObstacle();
             obstacleInterruptFlag = false;
+            startTask(searchingBallTask); // Restart searching after handling obstacle
+
         }
         wait1Msec(100);
     }
@@ -302,18 +292,25 @@ void collectPhase() {
         if(limitSwitches[2] == 0) { // Ball picked up
             frontRollerControl(0);
             status.isBallPicked = true;
+            stopTask(moveTowardsBallTask);
             currentState = RETURN;
             break;
         }
         
         // Check for interrupts
         if (boundaryInterruptFlag) {
+            frontRollerControl(0);
+            stopTask(moveTowardsBallTask);
             handleBoundary();
             boundaryInterruptFlag = false;
+            startTask(moveTowardsBallTask); // Restart moving towards ball after handling boundary
         }
         else if (obstacleInterruptFlag) {
+            frontRollerControl(0);
+            stopTask(moveTowardsBallTask);
             handleObstacle();
             obstacleInterruptFlag = false;
+            startTask(moveTowardsBallTask); // Restart moving towards ball after handling obstacle
         }
         wait1Msec(100);
     }
@@ -333,12 +330,16 @@ void returnPhase() {
  
         // Check for interrupts
         if (boundaryInterruptFlag) {
+            stopTask(returnToBaseTask);
             handleBoundary();
             boundaryInterruptFlag = false;
+            startTask(returnToBaseTask); // Restart returning to base after handling boundary
         }
         else if (obstacleInterruptFlag) {
+            stopTask(returnToBaseTask);
             handleObstacle();
             obstacleInterruptFlag = false;
+            startTask(returnToBaseTask); // Restart returning to base after handling obstacle
         }
         wait1Msec(100);
     }
@@ -397,16 +398,6 @@ void frontRollerControl(int speed) {
 
 void flapperControl(int speed) {
     motor[BACK_ROLLER] = speed;
-}
-
-int getCompassHeading() {
-    return heading;
-}
-
-void checkBoundary() {
-    if (status.isBoundary) {
-        boundaryInterrupt();
-    }
 }
 
 //to stop motors with braking
@@ -640,7 +631,6 @@ void handleObstacle() {
 void returnToBase(){
     while (true) {
         int target = 135;
-        int heading = compass();
         int degree = heading - target;
         if(degree <0){
             turnDegrees(degree, true);
@@ -659,14 +649,3 @@ void returnToBase(){
     }
 }
 
-// ================================================================== Tasks definition ==================================================================
-task moveTowardsBallTask() {
-    moveTowardsBall();
-}
-task returnToBaseTask(){
-    returnToBase();
-}
-
-task searchingBallTask(){
-    searchingAlgo();
-}
