@@ -761,10 +761,10 @@ void turnDegrees(float degrees, bool right) {
     int reducedSpeed = 127 * 0.7;
 
     if (right) {
-        motor[motorLeft] = -reducedSpeed;
+        motor[motorLeft] = reducedSpeed;
         motor[motorRight] = -reducedSpeed;
     } else {
-        motor[motorLeft] = reducedSpeed;
+        motor[motorLeft] = -reducedSpeed;
         motor[motorRight] = reducedSpeed;
     }
 
