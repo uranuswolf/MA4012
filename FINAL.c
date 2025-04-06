@@ -31,6 +31,7 @@
 #define SAMPLE_SIZE 5
 #define CIRCUMFERENCE (WHEEL_DIAMETER * PI) // meters
 #define DISTANCE_PER_TICK (CIRCUMFERENCE / TICKS_PER_REV) // meters per tick
+#define DISTANCE_CORRECTION_FACTOR 3.5 // Adjust this factor based on your robot's calibration
 
 // ================================================================== Types & Enums ==================================================================
 typedef enum RobotState {
@@ -108,7 +109,6 @@ void flapperControl(FlapMode mode);
 void searchingAlgo(void);
 void moveTowardsBall(void);
 void decideTurn(float leftDist, float rightDist);
-void stopMotors(void);
 void returnToBase(void);
 void resetStatus(void);
 
@@ -233,7 +233,7 @@ int distanceToTicks(float distance) {
 }
 
 void moveDistance(float distance, bool backward) {
-    float realDistance = distance * 3.5;
+    float realDistance = distance * DISTANCE_CORRECTION_FACTOR;
     int targetTicks = distanceToTicks(realDistance);
 
     int maxPowerRight = (backward ? -1 : 1) * BASE_POWER;
@@ -270,20 +270,38 @@ void moveDistance(float distance, bool backward) {
             currentRightPower += accelRate * (powerRight > 0 ? 1 : -1);
             if ((powerRight > 0 && currentRightPower > powerRight) ||
                 (powerRight < 0 && currentRightPower < powerRight)) {
-                currentRightPower = powerRight;
+                currentRightPower = powerRight;  // Cap to max power
             }
         } else {
-            currentRightPower = powerRight;  // deceleration path
+            // Smooth deceleration path
+            if (abs(currentRightPower) > abs(powerRight)) {
+                currentRightPower -= accelRate * (powerRight > 0 ? 1 : -1);
+                if ((powerRight > 0 && currentRightPower < powerRight) ||
+                    (powerRight < 0 && currentRightPower > powerRight)) {
+                    currentRightPower = powerRight;  // Smooth deceleration
+                }
+            } else {
+                currentRightPower = powerRight;  // Final stop at target power
+            }
         }
 
         if (abs(currentLeftPower) < abs(powerLeft)) {
             currentLeftPower += accelRate * (powerLeft > 0 ? 1 : -1);
             if ((powerLeft > 0 && currentLeftPower > powerLeft) ||
                 (powerLeft < 0 && currentLeftPower < powerLeft)) {
-                currentLeftPower = powerLeft;
+                currentLeftPower = powerLeft;  // Cap to max power
             }
         } else {
-            currentLeftPower = powerLeft;  // deceleration path
+            // Smooth deceleration path
+            if (abs(currentLeftPower) > abs(powerLeft)) {
+                currentLeftPower -= accelRate * (powerLeft > 0 ? 1 : -1);
+                if ((powerLeft > 0 && currentLeftPower < powerLeft) ||
+                    (powerLeft < 0 && currentLeftPower > powerLeft)) {
+                    currentLeftPower = powerLeft;  // Smooth deceleration
+                }
+            } else {
+                currentLeftPower = powerLeft;  // Final stop at target power
+            }
         }
 
         motor[motorLeft] = currentLeftPower;
@@ -313,8 +331,10 @@ void turnDegrees(float degrees, bool right) {
           abs(SensorValue[RIGHT_ENCODER]) < targetTicks) {
         wait1Msec(10);
     }
-    stopMotors();
+    motor[motorLeft] = 0;
+    motor[motorRight] = 0;
 }
+
 
 // ================================================================== State Functions ==================================================================
 void searchPhase() {
@@ -512,109 +532,83 @@ void flapperControl(FlapMode mode) {
 
 void searchingAlgo() {
     static int searchIteration = 0;
-    const float PAN_ANGLE = 20.0;  // Degrees to pan
-    const float INITIAL_DISTANCE = 1.0; // Meters to move forward initially
+    const float PAN_ANGLE = 20.0;
+    const float INITIAL_DISTANCE = 1.0;
+    const float ROW_DISTANCE = 0.2;
 
-    // Phase 1: Initial ball acquisition (known position)
-    if (!isfirstBallDelivered && searchIteration == 0) {
-        //1st pan in 1st row 
-        moveDistance(INITIAL_DISTANCE); //Move to the 1st row
-        wait1Msec(500); // Allow time to settle
-        turnDegrees(PAN_ANGLE, status.panRight); //Scan the 1st row 
-        wait1Msec(500);  // Sensor settling time
-        turnDegrees(PAN_ANGLE, !status.panRight); //Return to straight position
-        wait1Msec(500);  // Sensor settling time
-
-        //2nd pan in 2nd row 
-        moveDistance(0,2); // Move forward to the 2nd row 
-        wait1Msec(500); // Allow time to settle
-        turnDegrees(PAN_ANGLE, status.panRight); //Scan the 2nd row 
-        wait1Msec(500);  // Sensor settling time
-        turnDegrees(PAN_ANGLE, !status.panRight); //Return to straight position
-        wait1Msec(500);  // Sensor settling time
-            
-        // 3rd pan in the 3rd row
-        moveDistance(0,2); // Move forward to the 3rd row 
-        wait1Msec(500); // Allow time to settle
-        turnDegrees(PAN_ANGLE, status.panRight); //Scan the 3rd row 
+    // Phase 1: Runs exactly once at startup (before first delivery)
+    if (!status.isfirstBallDelivered && searchIteration == 0) {
+        // 1st pan in 1st row 
+        moveDistance(INITIAL_DISTANCE);
         wait1Msec(500);
-        turnDegrees(PAN_ANGLE, !status.panRight); //Return to straight position
-        wait1Msec(500);  // Sensor settling time
-       
-            
-        // Return to center
-        returnToBase(); // Move back to the base position
-        }
-    
-        searchIteration++;
-        return;
-    }
+        turnDegrees(PAN_ANGLE, status.panRight);
+        wait1Msec(500);
+        turnDegrees(PAN_ANGLE, !status.panRight);
+        wait1Msec(500);
 
-    // Phase 2: Competitive search pattern after first delivery or if first attempt not found 
-    const float SPIRAL_BASE = 0.4;
-    const float SPIRAL_INC = 0.15;
-    const int QUAD_TIME = 1200;  // ms per quadrant
-    
-    // Adaptive spiral search with random elements
-    float spiralRadius = SPIRAL_BASE + (searchIteration * SPIRAL_INC);
-    int startTime = nPgmTime;
-    
-    // Randomize the search pattern slightly to avoid predictability
-    int patternVariant = rand() % 3;
-    
-    switch(patternVariant) {
-        case 0: // Archimedean spiral
-            while (nPgmTime - startTime < QUAD_TIME) {
-                float progress = (nPgmTime - startTime) / (float)QUAD_TIME;
-                float currentAngle = progress * 90.0;
-                
-                // Use sinDegrees directly (RobotC supports it)
-                float angular = 15.0 * sinDegrees(currentAngle * 4); // Using sinDegrees
+        // 2nd pan in 2nd row 
+        moveDistance(ROW_DISTANCE);
+        wait1Msec(500);
+        turnDegrees(PAN_ANGLE, status.panRight);
+        wait1Msec(500);
+        turnDegrees(PAN_ANGLE, !status.panRight);
+        wait1Msec(500);
+            
+        // 3rd pan in 3rd row
+        moveDistance(ROW_DISTANCE);
+        wait1Msec(500);
+        turnDegrees(PAN_ANGLE, status.panRight);
+        wait1Msec(500);
+        turnDegrees(PAN_ANGLE, !status.panRight);
+        wait1Msec(500);
 
-                motor[motorLeft] = BASE_POWER * 0.7 - angular;
-                motor[motorRight] = BASE_POWER * 0.7 + angular;
-                
-                wait1Msec(50);
-                
-                if (status.isBall) {
-                    stopMotors();
-                    return;
-                }
-            }
-            break;
-            
-        case 1: // Sector search with quick scans
-            for (int i = 0; i < 3; i++) {
-                // Quick forward
-                moveDistance(spiralRadius * 0.6);
-                
-                // Sharp turn
-                turnDegrees(45 + (rand() % 30), rand() % 2);
-                
-                if (status.isBall) return;
-            }
-            break;
-            
-        case 2: // Expanding square
-            moveDistance(spiralRadius);
-            turnDegrees(90 + (rand() % 15 - 7), rand() % 2);
-            break;
+        searchIteration++;  // Increment here to ensure Phase 1 runs ONLY ONCE
     }
-    
-    searchIteration++;
-    
-    // Reset spiral after full cycle to prevent getting stuck
-    if (searchIteration > 8) {
-        searchIteration = 0;
+    else {
+        // Phase 2: Competitive/spiral search (after first delivery or if Phase 1 fails)
+        const float SPIRAL_BASE = 0.4;
+        const float SPIRAL_INC = 0.15;
+        const int QUAD_TIME = 1200;
         
-        // Occasionally do a full 360° scan
-        if (rand() % 4 == 0) {
-            turnDegrees(360, rand() % 2);
+        float spiralRadius = SPIRAL_BASE + (searchIteration * SPIRAL_INC);
+        int startTime = nPgmTime;
+        
+        int patternVariant = rand() % 3;
+        
+        switch(patternVariant) {
+            case 0: // Archimedean spiral
+                while (nPgmTime - startTime < QUAD_TIME) {
+                    float progress = (nPgmTime - startTime) / (float)QUAD_TIME;
+                    float currentAngle = progress * 90.0;
+                    float angular = 15.0 * sinDegrees(currentAngle * 4);
+                    motor[motorLeft] = BASE_POWER * 0.7 - angular;
+                    motor[motorRight] = BASE_POWER * 0.7 + angular;
+                    wait1Msec(50);
+                }
+                break;
+                
+            case 1: // Sector search
+                for (int i = 0; i < 3; i++) {
+                    moveDistance(spiralRadius * 0.6);
+                    turnDegrees(45 + (rand() % 30), rand() % 2);
+                }
+                break;
+                
+            case 2: // Expanding square
+                moveDistance(spiralRadius);
+                turnDegrees(90 + (rand() % 15 - 7), rand() % 2);
+                break;
+        }
+
+        searchIteration++;  // Increment here for Phase 2's spiral expansion
+        
+        // Reset after full cycle to avoid infinite spiral growth
+        if (searchIteration > 8) {
+            searchIteration = 0;
+            if (rand() % 4 == 0) turnDegrees(360, rand() % 2);  // Optional 360° scan
         }
     }
-
-
-
+}
 
 void moveTowardsBall() {
 
@@ -636,7 +630,9 @@ void moveTowardsBall() {
 
 // Boundary Handling Function
 void handleBoundary() {
-    stopMotors(); // Stop motors immediately with braking
+    // Stop motors immediately 
+    motor[motorLeft] = 0;
+    motor[motorRight] = 0; 
 
     // Determine which boundary sensors are triggered
     bool frontLeft = (IR_values[1] == 0);
@@ -708,8 +704,10 @@ void decideTurn(float leftDist, float rightDist) {
 
 // Obstacle Handling Function
 void handleObstacle() {
-    stopMotors();  // Stop motors immediately with braking
-
+    // Stop motors immediately 
+    motor[motorLeft] = 0;
+    motor[motorRight] = 0; 
+    
     // Get obstacle distances for more intelligent maneuvering
     float frontDist = distances.distFC;
     float leftDist = distances.distFL;
