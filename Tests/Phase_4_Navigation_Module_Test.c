@@ -20,6 +20,7 @@
 #define DISTANCE_PER_TICK (CIRCUMFERENCE / TICKS_PER_REV)
 #define DISTANCE_CORRECTION_FACTOR 3.5
 #define OFFSET_POWER_FOR_LEFT_MOTOR 1.28
+#define ROLLER_SPEED 127 // Define the roller speed
 
 typedef struct {
     float distFC;
@@ -152,25 +153,25 @@ void searchingAlgo() {
 
     if (!status.isfirstBallDelivered && searchIteration == 0) {
         // Initial search pattern
-        moveDistance(INITIAL_DISTANCE);
+        moveDistance(INITIAL_DISTANCE, false);  // Specify backward as false or true
         wait1Msec(500);
-        turnDegrees(PAN_ANGLE, status.panRight);
+        turnDegrees(PAN_ANGLE, status.panRight);  // Specify right as true or false
         wait1Msec(500);
-        turnDegrees(PAN_ANGLE, !status.panRight);
+        turnDegrees(PAN_ANGLE, !status.panRight);  // Specify right as true or false
         wait1Msec(500);
 
-        moveDistance(ROW_DISTANCE);
+        moveDistance(ROW_DISTANCE, false);  // Specify backward as false or true
         wait1Msec(500);
-        turnDegrees(PAN_ANGLE, status.panRight);
+        turnDegrees(PAN_ANGLE, status.panRight);  // Specify right as true or false
         wait1Msec(500);
-        turnDegrees(PAN_ANGLE, !status.panRight);
+        turnDegrees(PAN_ANGLE, !status.panRight);  // Specify right as true or false
         wait1Msec(500);
             
-        moveDistance(ROW_DISTANCE);
+        moveDistance(ROW_DISTANCE, false);  // Specify backward as false or true
         wait1Msec(500);
-        turnDegrees(PAN_ANGLE, status.panRight);
+        turnDegrees(PAN_ANGLE, status.panRight);  // Specify right as true or false
         wait1Msec(500);
-        turnDegrees(PAN_ANGLE, !status.panRight);
+        turnDegrees(PAN_ANGLE, !status.panRight);  // Specify right as true or false
         wait1Msec(500);
 
         searchIteration++;
@@ -213,33 +214,33 @@ void searchingAlgo() {
             case 1:
                 // Sector search
                 for (int i = 0; i < 3; i++) {
-                    moveDistance(spiralRadius * 0.6);
-                    turnDegrees(45 + (rand() % 30), rand() % 2);
+                    moveDistance(spiralRadius * 0.6, false);  // Specify backward as false or true
+                    turnDegrees(45 + (rand() % 30), rand() % 2);  // Specify right as true or false
                     searchIteration++;
                 }
                 break;
                 
             case 2:
                 // Expanding square
-                moveDistance(spiralRadius);
-                turnDegrees(90 + (rand() % 15 - 7), rand() % 2);
+                moveDistance(spiralRadius, false);  // Specify backward as false or true
+                turnDegrees(90 + (rand() % 15 - 7), rand() % 2);  // Specify right as true or false
                 searchIteration++;
                 break;
         }
 
         if (searchIteration > 5) {
             searchIteration = 0;
-            if (rand() % 4 == 0) turnDegrees(360, rand() % 2);
+            if (rand() % 4 == 0) turnDegrees(360, rand() % 2);  // Specify right as true or false
         }
     }
 }
 
 void moveTowardsBall() {
     if (distances.distFL < distances.distFR) {
-        moveDistance(distances.distFL/100.0 - 0.2);
-        turnDegrees(30);
+        moveDistance(distances.distFL/100.0 - 0.2,false);
+        turnDegrees(30,false);
     } else {
-        moveDistance(distances.distFR/100.0 - 0.2);
+        moveDistance(distances.distFR/100.0 - 0.2,false);
         turnDegrees(30, true);
     }
 }
@@ -250,7 +251,7 @@ void returnToBase() {
     if(degree < 0){
         turnDegrees(abs(degree), true);
     } else {
-        turnDegrees(degree);
+        turnDegrees(degree, false);
     }
     moveDistance(3.0, true);
 }
