@@ -68,6 +68,7 @@ typedef struct {
     bool reachedBase;
     bool isDelivered;
     bool isfirstBallDelivered; // Flag to check if the first ball is delivered
+    bool panRight; // Flag to check if should pan left or right at the start of the search
 } StatusFlags;
 
 // ================================================================== Global Variables ==================================================================
@@ -125,7 +126,9 @@ task returnToBaseTask(){
 }
 
 task searchingBallTask(){
-    searchingAlgo();
+    while(true){
+        searchingAlgo();
+    }
 }
 
 
@@ -193,6 +196,8 @@ task readSensorsTask() {
         
         status.isFrontObstacle = (distances.distFC >= 10.0 && distances.distFC <= 40.0);
         status.isBackObstacle = (distances.distBC >= 10.0 && distances.distBC <= 40.0);
+    
+        status.panRight = (IR_values[1] == 0 || IR_values[3] == 0) ? true : false;
         
         // Boundary has priority over obstacle
         if (status.isBoundary && !boundaryInterruptActive) {
@@ -516,41 +521,45 @@ void flapperControl(FlapMode mode) {
 
 void searchingAlgo() {
     static int searchIteration = 0;
-    const float PAN_ANGLE = 60.0;  // Degrees to pan left/right
-    const float INITIAL_DISTANCE = 1.2; // Meters to move forward initially
+    const float PAN_ANGLE = 20.0;  // Degrees to pan
+    const float INITIAL_DISTANCE = 1.0; // Meters to move forward initially
 
     // Phase 1: Initial ball acquisition (known position)
-    if (!isfirstBallDelivered) {
-        // Move forward to expected ball location
-        moveDistance(INITIAL_DISTANCE);
-        
-        // If ball not found, perform targeted pan search
-        if (!status.isBall) {
-            // Alternate pan directions each time
-            bool panRight = (searchIteration % 2 == 0);
+    if (!isfirstBallDelivered && searchIteration == 0) {
+        //1st pan in 1st row 
+        moveDistance(INITIAL_DISTANCE); //Move to the 1st row
+        wait1Msec(500); // Allow time to settle
+        turnDegrees(PAN_ANGLE, status.panRight); //Scan the 1st row 
+        wait1Msec(500);  // Sensor settling time
+        turnDegrees(PAN_ANGLE, !status.panRight); //Return to straight position
+        wait1Msec(500);  // Sensor settling time
+
+        //2nd pan in 2nd row 
+        moveDistance(0,2); // Move forward to the 2nd row 
+        wait1Msec(500); // Allow time to settle
+        turnDegrees(PAN_ANGLE, status.panRight); //Scan the 2nd row 
+        wait1Msec(500);  // Sensor settling time
+        turnDegrees(PAN_ANGLE, !status.panRight); //Return to straight position
+        wait1Msec(500);  // Sensor settling time
             
-            // First pan
-            turnDegrees(PAN_ANGLE, panRight);
-            wait1Msec(300);  // Sensor settling time
+        // 3rd pan in the 3rd row
+        moveDistance(0,2); // Move forward to the 3rd row 
+        wait1Msec(500); // Allow time to settle
+        turnDegrees(PAN_ANGLE, status.panRight); //Scan the 3rd row 
+        wait1Msec(500);
+        turnDegrees(PAN_ANGLE, !status.panRight); //Return to straight position
+        wait1Msec(500);  // Sensor settling time
+       
             
-            // Second pan (wider angle)
-            turnDegrees(PAN_ANGLE * 1.5, !panRight);
-            wait1Msec(300);
-            
-            // Return to center
-            turnDegrees(PAN_ANGLE / 2, panRight);
+        // Return to center
+        returnToBase(); // Move back to the base position
         }
-        
-        if (status.isBall) {
-            firstBallFound = true;
-            return;
-        }
-        
+    
         searchIteration++;
         return;
     }
 
-    // Phase 2: Competitive search pattern after first delivery
+    // Phase 2: Competitive search pattern after first delivery or if first attempt not found 
     const float SPIRAL_BASE = 0.4;
     const float SPIRAL_INC = 0.15;
     const int QUAD_TIME = 1200;  // ms per quadrant
@@ -612,7 +621,7 @@ void searchingAlgo() {
             turnDegrees(360, rand() % 2);
         }
     }
-}
+
 
 
 
