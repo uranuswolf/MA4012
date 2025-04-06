@@ -1,5 +1,5 @@
-#pragma config(Motor,  port8,  FRONT_ROLLER,   tmotorVex393_MC29, openLoop)
-#pragma config(Motor,  port9,  BACK_ROLLER,    tmotorVex393_MC29, openLoop)
+#pragma config(Motor,  port8,  FRONT_ROLLER,   tmotorServoContinuousRotation, openLoop)
+#pragma config(Motor,  port9,  BACK_ROLLER,    tmotorServoContinuousRotation, openLoop)
 
 #define ROLLER_SPEED 127
 

@@ -31,6 +31,8 @@ typedef struct {
     bool isBallPicked;
     bool reachedBase;
     bool isDelivered;
+    bool isfirstBallDelivered;
+    bool panRight;
 } StatusFlags;
 
 DistanceSensors distances;
@@ -79,10 +81,10 @@ void readSensors() {
     // Update status flags
     status.isBoundary = (IR_values[0] == 0 || IR_values[1] == 0 || 
                        IR_values[2] == 0 || IR_values[3] == 0);
-    
     status.isFrontObstacle = (distances.distFC >= 10.0 && distances.distFC <= 40.0);
     status.isBackObstacle = (distances.distBC >= 10.0 && distances.distBC <= 40.0);
     status.isBallPicked = (limitSwitches[2] == 0);
+    status.panRight = (IR_values[1] == 0 || IR_values[3] == 0) ? true : false;
     status.isBall = ((distances.distFL >= 10.0 && distances.distFL <= 70.0) || 
                    (distances.distFR >= 10.0 && distances.distFR <= 70.0)) &&
                   !(distances.distFC >= 10.0 && distances.distFC <= 40.0);
@@ -107,7 +109,8 @@ void testSensorModule() {
         writeDebugStreamLine("Boundary: %d | Ball: %d | F.Obst: %d | B.Obst: %d",
                            status.isBoundary, status.isBall,
                            status.isFrontObstacle, status.isBackObstacle);
-        writeDebugStreamLine("Ball Picked: %d", status.isBallPicked);
+        writeDebugStreamLine("Ball Picked: %d | Pan Right: %d | First Delivered: %d",
+                           status.isBallPicked, status.panRight, status.isfirstBallDelivered);
         
         wait1Msec(1000);
     }

@@ -2,10 +2,10 @@
 #pragma config(Sensor, in1,    sharpFR,        sensorAnalog)
 #pragma config(Sensor, in8,    sharpFC,        sensorAnalog)
 #pragma config(Sensor, dgtl7,  limitswitchBall,sensorDigitalIn)
-#pragma config(Motor,  port3,  motorLeft,      tmotorVex393_MC29, openLoop)
+#pragma config(Motor,  port3,  motorLeft,      tmotorVex393_MC29, openLoop, reversed)
 #pragma config(Motor,  port2,  motorRight,     tmotorVex393_MC29, openLoop)
-#pragma config(Motor,  port8,  FRONT_ROLLER,   tmotorVex393_MC29, openLoop)
-#pragma config(Motor,  port9,  BACK_ROLLER,    tmotorVex393_MC29, openLoop)
+#pragma config(Motor,  port8,  FRONT_ROLLER,   tmotorServoContinuousRotation, openLoop)
+#pragma config(Motor,  port9,  BACK_ROLLER,    tmotorServoContinuousRotation, openLoop)
 
 #define ROLLER_SPEED 127
 
@@ -32,6 +32,7 @@ typedef struct {
     bool isBall;
     bool isBallPicked;
     bool reachedBase;
+    bool isfirstBallDelivered;
 } StatusFlags;
 
 RobotState currentState = SEARCH;
@@ -77,9 +78,17 @@ void flapperControl(FlapMode mode) {
 
 void moveDistance(float distance, bool backward = false) {
     // Simplified for testing
-    motor[motorLeft] = backward ? 50 : -50;
+    motor[motorLeft] = backward ? 50 : -50 * OFFSET_POWER_FOR_LEFT_MOTOR;
     motor[motorRight] = backward ? -50 : 50;
     wait1Msec(distance * 1000);
+    motor[motorLeft] = 0;
+    motor[motorRight] = 0;
+}
+
+void turnDegrees(float degrees, bool right = false) {
+    motor[motorLeft] = right ? 40 : -40;
+    motor[motorRight] = right ? -40 : 40;
+    wait1Msec(degrees * 10);
     motor[motorLeft] = 0;
     motor[motorRight] = 0;
 }
@@ -119,6 +128,9 @@ void deliverPhase() {
     
     status.isBallPicked = false;
     currentState = SEARCH;
+    if (!status.isfirstBallDelivered) {
+        status.isfirstBallDelivered = true;
+    }
 }
 
 void testStateMachine() {
