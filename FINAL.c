@@ -110,6 +110,7 @@ void moveTowardsBall(void);
 void decideTurn(float leftDist, float rightDist);
 void stopMotors(void);
 void returnToBase(void);
+void resetStatus(void);
 
 
 // Interrupt handlers
@@ -481,6 +482,19 @@ void deliverPhase() {
 }
 
 // ================================================================== Helper Functions ==================================================================
+// Function to reset the status flags
+void resetStatus() {
+    status.isBoundary = false;
+    status.isBall = false;
+    status.isFrontObstacle = false;
+    status.isBackObstacle = false;
+    status.isBallPicked = false;
+    status.reachedBase = false;
+    status.isDelivered = false;
+    status.isfirstBallDelivered = false;
+    status.panRight = false;
+}
+
 void frontRollerControl(RollerMode mode) {
     switch(mode){
         case INTAKE:
@@ -782,7 +796,7 @@ void returnToBase(){
 // ================================================================== Main Task ==================================================================
 task main() {
     // Initialize all status flags to false
-    status = (StatusFlags){0};
+    resetStatus();
 
     // Initialize sensor reading task
     startTask(readSensorsTask);
