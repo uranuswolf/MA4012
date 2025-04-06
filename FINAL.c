@@ -26,8 +26,8 @@
 #define WHEEL_BASE 0.188 // meters
 #define TICKS_PER_REV 90
 #define BASE_POWER 50
-#define ROLLER_SPEED 127
 #define MAX_DISTANCE 300 // cm
+#define ROLLER_SPEED 127 // speed of the roller motors
 #define SAMPLE_SIZE 5
 #define CIRCUMFERENCE (WHEEL_DIAMETER * PI) // meters
 #define DISTANCE_PER_TICK (CIRCUMFERENCE / TICKS_PER_REV) // meters per tick
@@ -40,6 +40,17 @@ typedef enum RobotState {
     DELIVER
 } RobotState;
 
+typedef enum FlapMode {
+    PUSH, 
+    OPEN,
+    CLOSE 
+} FlapMode;
+
+typedef enum RollerMode {
+    INTAKE, 
+    OUTPUT,
+    STOP 
+} RollerMode;
 
 typedef struct {
     float distFC;
@@ -90,13 +101,14 @@ void deliverPhase(void);
 // Helper functions
 void handleBoundary(void);
 void handleObstacle(void);
-void frontRollerControl(int speed);
-void flapperControl(int speed);
+void frontRollerControl(RollerMode mode);
+void flapperControl(FlapMode mode);
 void searchingAlgo(void);
 void moveTowardsBall(void);
 void decideTurn(float leftDist, float rightDist);
 void stopMotors(void);
 void returnToBase(void);
+
 
 // Interrupt handlers
 void boundaryInterrupt(void);
@@ -143,6 +155,10 @@ task readSensorsTask() {
         limitSwitches[0] = SensorValue[limitswitchLB];
         limitSwitches[1] = SensorValue[limitswitchRB];
         limitSwitches[2] = SensorValue[limitswitchBall];
+
+       // Ball pickup status updates automatically based on limit switch
+        status.isBallPicked = (limitSwitches[2] == 0);
+
 
         // Read compass
         heading = SensorValue[compass_MSB] * 8 + 
@@ -205,26 +221,96 @@ task readSensorsTask() {
 }
 
 // ================================================================== Movement Functions ==================================================================
+int distanceToTicks(float distance) {
+    return (int)(distance /DISTANCE_PER_TICK);
+}
+
 void moveDistance(float distance, bool backward) {
     float realDistance = distance * 3.5;
     int targetTicks = distanceToTicks(realDistance);
+    
+    // Set the base power and calculate the final target powers for left and right motors
     int leftPower = backward ? 1.28 * BASE_POWER : -1.28 * BASE_POWER;
     int rightPower = backward ? -BASE_POWER : BASE_POWER;
 
+    // Calculate the acceleration rate (you can adjust this value for smoother or faster acceleration)
+    int accelRate = 10; // Increase the power by this amount every cycle (can be adjusted)
+    int maxPowerLeft = leftPower;
+    int maxPowerRight = rightPower;
+
+    // Initialize motor power values at 0 for acceleration
+    int currentLeftPower = 0;
+    int currentRightPower = 0;
+
+    // Reset encoders
     SensorValue[LEFT_ENCODER] = 0;
     SensorValue[RIGHT_ENCODER] = 0;
 
-    motor[motorLeft] = leftPower;
-    motor[motorRight] = rightPower;
-
+    // Start moving with gradual acceleration
     while(abs(SensorValue[LEFT_ENCODER]) < targetTicks && 
-          abs(SensorValue[RIGHT_ENCODER]) < targetTicks && 
-          !boundaryInterruptFlag && 
-          !obstacleInterruptFlag) {
-        wait1Msec(10);
+          abs(SensorValue[RIGHT_ENCODER]) < targetTicks) {
+
+        // Gradually increase the power of the motors
+        if (currentLeftPower < maxPowerLeft) {
+            currentLeftPower += accelRate; // Increase left motor power
+            if (currentLeftPower > maxPowerLeft) {
+                currentLeftPower = maxPowerLeft; // Cap it at max power
+            }
+        }
+
+        if (currentRightPower < maxPowerRight) {
+            currentRightPower += accelRate; // Increase right motor power
+            if (currentRightPower > maxPowerRight) {
+                currentRightPower = maxPowerRight; // Cap it at max power
+            }
+        }
+
+        // Set the motor power to the current power
+        motor[motorLeft] = currentLeftPower;
+        motor[motorRight] = currentRightPower;
+
+        wait1Msec(10); // Small delay for smoother control
     }
 
+    // Stop the motors once the target distance is reached
     stopMotors();
+}
+
+// Smoothly decelerates motors to a stop
+void stopMotors() {
+    // Start by slowly reducing the motor power
+    int decelRate = 10;  // The rate at which the motor power will decrease
+    int leftPower = motor[motorLeft];  // Get the current power of the left motor
+    int rightPower = motor[motorRight];  // Get the current power of the right motor
+
+    // Gradually decrease the motor power until both are stopped
+    while (leftPower != 0 || rightPower != 0) {
+        if (leftPower > 0) {
+            leftPower -= decelRate;  // Gradually reduce power for left motor
+            if (leftPower < 0) leftPower = 0;  // Don't go below 0
+        } else if (leftPower < 0) {
+            leftPower += decelRate;  // Gradually reduce power for left motor (if negative)
+            if (leftPower > 0) leftPower = 0;  // Don't go above 0
+        }
+
+        if (rightPower > 0) {
+            rightPower -= decelRate;  // Gradually reduce power for right motor
+            if (rightPower < 0) rightPower = 0;  // Don't go below 0
+        } else if (rightPower < 0) {
+            rightPower += decelRate;  // Gradually reduce power for right motor (if negative)
+            if (rightPower > 0) rightPower = 0;  // Don't go above 0
+        }
+
+        // Set the new motor power values
+        motor[motorLeft] = leftPower;
+        motor[motorRight] = rightPower;
+
+        wait1Msec(50);  // Allow time for deceleration, adjust the time for smoother/longer deceleration
+    }
+
+    // Ensure motors are completely stopped
+    motor[motorLeft] = 0;
+    motor[motorRight] = 0;
 }
 
 void turnDegrees(float degrees, bool right) {
@@ -240,9 +326,7 @@ void turnDegrees(float degrees, bool right) {
     motor[motorRight] = right ? -reducedSpeed : reducedSpeed;
 
     while(abs(SensorValue[LEFT_ENCODER]) < targetTicks && 
-          abs(SensorValue[RIGHT_ENCODER]) < targetTicks && 
-          !boundaryInterruptFlag && 
-          !obstacleInterruptFlag) {
+          abs(SensorValue[RIGHT_ENCODER]) < targetTicks) {
         wait1Msec(10);
     }
     stopMotors();
@@ -277,40 +361,44 @@ void searchPhase() {
 }
 
 void collectPhase() {
-    frontRollerControl(-ROLLER_SPEED);
+    frontRollerControl(INTAKE); // Start roller intake
+    flapperControl(OPEN); // Open the flapper to pick up the ball
     startTask(moveTowardsBallTask);
     
     while(currentState == COLLECT) {
         // if the ball is no longer in sight 
         if(!status.isBall) {
-            frontRollerControl(0);
+            frontRollerControl(STOP);
             stopTask(moveTowardsBallTask);
             currentState = SEARCH;
             break;
         }
         
         if(limitSwitches[2] == 0) { // Ball picked up
-            frontRollerControl(0);
+            frontRollerControl(STOP);
             status.isBallPicked = true;
             stopTask(moveTowardsBallTask);
+            flapperControl(CLOSE); // Close the flapper to hold the ball
             currentState = RETURN;
             break;
         }
         
         // Check for interrupts
         if (boundaryInterruptFlag) {
-            frontRollerControl(0);
+            frontRollerControl(STOP);
             stopTask(moveTowardsBallTask);
             handleBoundary();
             boundaryInterruptFlag = false;
             startTask(moveTowardsBallTask); // Restart moving towards ball after handling boundary
+            frontRollerControl(INTAKE); // Resume roller intake
         }
         else if (obstacleInterruptFlag) {
-            frontRollerControl(0);
+            frontRollerControl(STOP);
             stopTask(moveTowardsBallTask);
             handleObstacle();
             obstacleInterruptFlag = false;
             startTask(moveTowardsBallTask); // Restart moving towards ball after handling obstacle
+            frontRollerControl(INTAKE); // Resume roller intake
         }
         wait1Msec(100);
     }
@@ -348,72 +436,82 @@ void returnPhase() {
 
 void deliverPhase() {
     // Activate flapper to deliver ball
-    flapperControl(ROLLER_SPEED);
+    flapperControl(PUSH);
     wait1Msec(1000); // Give time to deliver
-    
-    // Reset status flags
-    status.isBallPicked = false;
-    status.reachedBase = false;
-    status.isDelivered = true;
-    
-    // Return to search mode
-    flapperControl(-ROLLER_SPEED); // Reset flapper position
-    wait1Msec(1000); // Give time to reset
-    currentState = SEARCH;
-}
 
-// ================================================================== Main Task ==================================================================
-task main() {
-    // Initialize sensor reading task
-    startTask(readSensorsTask);
-    wait1Msec(500); // Allow sensors to stabilize
+    // Open the flapper and check if the ball is delivered
+    flapperControl(OPEN);
 
-    while(true) {
-        switch(currentState) {
-            case SEARCH:
-                searchPhase();
-                break;
-            case COLLECT:
-                collectPhase();
-                break;
-            case RETURN:
-                returnPhase();
-                break;
-            case DELIVER:
-                deliverPhase();
-                break;
+    if (!status.isBallPicked) {
+        status.isDelivered = true; // Ball is delivered
+            currentState = SEARCH;     // Move to search state
+    }
+
+    // if the ball is still not released, keep pushing it out
+    while (status.isBallPicked) {
+        // If the ball is still picked, push the ball out again
+        flapperControl(PUSH);
+        wait1Msec(1000); // Give time to hold
+
+        // Open the flapper again to release the ball
+        flapperControl(OPEN);
+
+        // Give some time for the ball to settle after opening the flapper
+        wait1Msec(500);  // Adjust this as needed for ball behavior
+        
+        // If the ball is no longer picked, mark it as delivered
+        if (!status.isBallPicked) {
+            status.isDelivered = true; // Ball is delivered
+            currentState = SEARCH;     // Move to search state
+            break; // Exit loop once ball is delivered
         }
-        wait1Msec(100);
     }
 }
 
 // ================================================================== Helper Functions ==================================================================
-int distanceToTicks(float distance) {
-    return (int)(distance /DISTANCE_PER_TICK);
+void frontRollerControl(RollerMode mode) {
+    switch(mode){
+        case INTAKE:
+            motor[FRONT_ROLLER] = -ROLLER_SPEED; // Intake speed
+            break;
+        case OUTPUT:
+            motor[FRONT_ROLLER] = ROLLER_SPEED; // Output speed
+            break;
+        case STOP:
+            motor[FRONT_ROLLER] = 0; // Stop roller
+            break;
+    }
 }
 
-void frontRollerControl(int speed) {
-    motor[FRONT_ROLLER] = speed;
-}
+void flapperControl(FlapMode mode) {
+    switch (mode) {
+        case PUSH:
+            // Implement PUSH behavior
+            motor[BACK_ROLLER] = -50; // Push the ball
+            wait1Msec(800);
+            break;
 
-void flapperControl(int speed) {
-    motor[BACK_ROLLER] = speed;
-}
+        case OPEN:
+            // Implement OPEN behavior
+            motor[BACK_ROLLER] = 50;
+            wait1Msec(1500);
+            motor[BACK_ROLLER] = 0;
+            break;
 
-//to stop motors with braking
-void stopMotors() {
-    motor[motorLeft] = 10;  // Apply short reverse pulse to stop
-    motor[motorRight] = -10;
-    wait1Msec(50);            // Allow motors to stop
-    motor[motorLeft] = 0;     // Completely stop the motors
-    motor[motorRight] = 0;
+        case CLOSE:
+            // Implement CLOSE behavior
+            motor[BACK_ROLLER] = -50;
+            wait1Msec(300);
+            motor[BACK_ROLLER] = 0;
+            break;
+    }
 }
 
 void searchingAlgo() {
     static bool firstBallFound = false;
     static int searchIteration = 0;
-    const float PAN_ANGLE = 60.0f;  // Degrees to pan left/right
-    const float INITIAL_DISTANCE = 1.2f; // Meters to move forward initially
+    const float PAN_ANGLE = 60.0;  // Degrees to pan left/right
+    const float INITIAL_DISTANCE = 1.2; // Meters to move forward initially
 
     // Phase 1: Initial ball acquisition (known position)
     if (!firstBallFound) {
@@ -434,7 +532,7 @@ void searchingAlgo() {
             wait1Msec(300);
             
             // Return to center
-            turnDegrees(PAN_ANGLE/2, panRight);
+            turnDegrees(PAN_ANGLE / 2, panRight);
         }
         
         if (status.isBall) {
@@ -447,8 +545,8 @@ void searchingAlgo() {
     }
 
     // Phase 2: Competitive search pattern after first delivery
-    const float SPIRAL_BASE = 0.4f;
-    const float SPIRAL_INC = 0.15f;
+    const float SPIRAL_BASE = 0.4;
+    const float SPIRAL_INC = 0.15;
     const int QUAD_TIME = 1200;  // ms per quadrant
     
     // Adaptive spiral search with random elements
@@ -462,15 +560,13 @@ void searchingAlgo() {
         case 0: // Archimedean spiral
             while (nPgmTime - startTime < QUAD_TIME) {
                 float progress = (nPgmTime - startTime) / (float)QUAD_TIME;
-                float currentAngle = progress * 90.0f;
-                float currentRadius = spiralRadius * progress;
+                float currentAngle = progress * 90.0;
                 
-                // Convert to motor commands
-                float linear = BASE_POWER * 0.7;
-                float angular = 15.0f * sinDegrees(currentAngle * 4);
-                
-                motor[motorLeft] = linear - angular;
-                motor[motorRight] = linear + angular;
+                // Use sinDegrees directly (RobotC supports it)
+                float angular = 15.0 * sinDegrees(currentAngle * 4); // Using sinDegrees
+
+                motor[motorLeft] = BASE_POWER * 0.7 - angular;
+                motor[motorRight] = BASE_POWER * 0.7 + angular;
                 
                 wait1Msec(50);
                 
@@ -511,6 +607,8 @@ void searchingAlgo() {
         }
     }
 }
+
+
 
 void moveTowardsBall() {
 
@@ -612,21 +710,38 @@ void handleObstacle() {
     float rightDist = distances.distFR;
     float backDist = distances.distBC;
 
-    // Only handle front obstacles if moving forward
+    // Handle front obstacles if moving forward
     if (status.isFrontObstacle) {
         moveDistance(-0.2, true);  // Back up 20cm
-        decideTurn(leftDist, rightDist);  // Decide turn direction based on side distances
+        
+        // If the front distance is very small, prefer turning to the side with more space
+        if (frontDist < 0.5) {  // Adjust threshold based on sensor range
+            decideTurn(leftDist, rightDist);  // Decide turn direction based on side distances
+        } else {
+            // Otherwise, just move straight and handle turn later
+            motor[motorLeft] = 0;
+            motor[motorRight] = 0;
+        }
     } 
-    // Only handle back obstacles while reversing
+    // Handle back obstacles while reversing
     else if (status.isBackObstacle && motor[motorLeft] > 0 && motor[motorRight] < 0) {
         moveDistance(0.2);  // Move forward 20cm
-        decideTurn(leftDist, rightDist);  // Decide turn direction based on side distances
+        
+        // If the back distance is very small, prefer turning to the side with more space
+        if (backDist < 0.5) {  // Adjust threshold based on sensor range
+            decideTurn(leftDist, rightDist);  // Decide turn direction based on side distances
+        } else {
+            // Otherwise, just stop or adjust movement
+            motor[motorLeft] = 0;
+            motor[motorRight] = 0;
+        }
     }
 
     // Reset flags for obstacle
     obstacleInterruptFlag = false;
     obstacleInterruptActive = false;
 }
+
 
 void returnToBase(){
     while (true) {
@@ -649,3 +764,27 @@ void returnToBase(){
     }
 }
 
+// ================================================================== Main Task ==================================================================
+task main() {
+    // Initialize sensor reading task
+    startTask(readSensorsTask);
+    wait1Msec(500); // Allow sensors to stabilize
+
+    while(true) {
+        switch(currentState) {
+            case SEARCH:
+                searchPhase();
+                break;
+            case COLLECT:
+                collectPhase();
+                break;
+            case RETURN:
+                returnPhase();
+                break;
+            case DELIVER:
+                deliverPhase();
+                break;
+        }
+        wait1Msec(100);
+    }
+}
