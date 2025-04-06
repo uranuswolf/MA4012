@@ -32,6 +32,7 @@
 #define CIRCUMFERENCE (WHEEL_DIAMETER * PI) // meters
 #define DISTANCE_PER_TICK (CIRCUMFERENCE / TICKS_PER_REV) // meters per tick
 #define DISTANCE_CORRECTION_FACTOR 3.5 // Adjust this factor based on your robot's calibration
+#define OFFSET_POWER_FOR_LEFT_MOTOR 1.28 // Adjust this factor based on your robot's calibration
 
 // ================================================================== Types & Enums ==================================================================
 typedef enum RobotState {
@@ -237,7 +238,7 @@ void moveDistance(float distance, bool backward) {
     int targetTicks = distanceToTicks(realDistance);
 
     int maxPowerRight = (backward ? -1 : 1) * BASE_POWER;
-    int maxPowerLeft  = (backward ? -1 : 1) * BASE_POWER * 1.28;
+    int maxPowerLeft  = (backward ? -1 : 1) * BASE_POWER * OFFSET_POWER_FOR_LEFT_MOTOR;
 
     int currentRightPower = 0;
     int currentLeftPower = 0;
@@ -253,7 +254,7 @@ void moveDistance(float distance, bool backward) {
 
         if (leftTicks >= targetTicks && rightTicks >= targetTicks) break;
 
-        int remainingTicks = targetTicks - max(leftTicks, rightTicks);
+        int remainingTicks = targetTicks - ((leftTicks > rightTicks) ? leftTicks : rightTicks);
 
         // Choose whether to accelerate or decelerate
         int powerRight = maxPowerRight;
@@ -568,47 +569,66 @@ void searchingAlgo() {
         // Phase 2: Competitive/spiral search (after first delivery or if Phase 1 fails)
         const float SPIRAL_BASE = 0.4;
         const float SPIRAL_INC = 0.15;
-        const int QUAD_TIME = 1200;
         
         float spiralRadius = SPIRAL_BASE + (searchIteration * SPIRAL_INC);
-        int startTime = nPgmTime;
+        
         
         int patternVariant = rand() % 3;
         
         switch(patternVariant) {
-            case 0: // Archimedean spiral
-                while (nPgmTime - startTime < QUAD_TIME) {
-                    float progress = (nPgmTime - startTime) / (float)QUAD_TIME;
-                    float currentAngle = progress * 90.0;
-                    float angular = 15.0 * sinDegrees(currentAngle * 4);
-                    motor[motorLeft] = BASE_POWER * 0.7 - angular;
-                    motor[motorRight] = BASE_POWER * 0.7 + angular;
-                    wait1Msec(50);
+        
+            case 0: { // Moving spiral search — robot drives in circles, increasing radius each loop
+                const int MAX_SPIRAL_LOOPS = 3;
+                const int CIRCLE_DURATION = 4000;  // Duration to complete one 360° arc
+                const float BASE_LINEAR_SPEED = 50;  // Base forward speed
+                const float BASE_TURN_RATIO = 0.6;   // Start with a tighter circle
+            
+                for (int i = 0; i < MAX_SPIRAL_LOOPS; i++) {
+                    int loopStartTime = nPgmTime;
+            
+                    // Calculate the wheel speed difference to create circular motion
+                    float radiusFactor = BASE_TURN_RATIO + (i * 0.15);  // Widen circle over time
+                    float leftSpeed = (BASE_LINEAR_SPEED*OFFSET_POWER_FOR_LEFT_MOTOR) * radiusFactor;
+                    float rightSpeed = BASE_LINEAR_SPEED;
+            
+                    // Drive in a circle for the duration of one full 360° arc
+                    while (nPgmTime - loopStartTime < CIRCLE_DURATION) {
+                        motor[motorLeft] = leftSpeed;
+                        motor[motorRight] = rightSpeed;
+                        wait1Msec(50);
+                    }
+            
+                    // Brief stop and pause between loops
+                    motor[motorLeft] = 0;
+                    motor[motorRight] = 0;
+                    wait1Msec(500);
                 }
                 break;
+            }
                 
             case 1: // Sector search
                 for (int i = 0; i < 3; i++) {
                     moveDistance(spiralRadius * 0.6);
                     turnDegrees(45 + (rand() % 30), rand() % 2);
+                    searchIteration++;  // Increment here for Phase 2's spiral expansion
                 }
                 break;
                 
             case 2: // Expanding square
                 moveDistance(spiralRadius);
                 turnDegrees(90 + (rand() % 15 - 7), rand() % 2);
+                searchIteration++;  // Increment here for Phase 2's spiral expansion
                 break;
         }
 
-        searchIteration++;  // Increment here for Phase 2's spiral expansion
-        
         // Reset after full cycle to avoid infinite spiral growth
-        if (searchIteration > 8) {
+        if (searchIteration > 5) {
             searchIteration = 0;
             if (rand() % 4 == 0) turnDegrees(360, rand() % 2);  // Optional 360° scan
         }
     }
 }
+
 
 void moveTowardsBall() {
 
@@ -716,7 +736,7 @@ void handleObstacle() {
 
     // Handle front obstacles if moving forward
     if (status.isFrontObstacle) {
-        moveDistance(-0.2, true);  // Back up 20cm
+        moveDistance(0.2, true);  // Back up 20cm
         
         // If the front distance is very small, prefer turning to the side with more space
         if (frontDist < 0.5) {  // Adjust threshold based on sensor range
