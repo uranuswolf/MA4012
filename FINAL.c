@@ -67,6 +67,7 @@ typedef struct {
     bool isBallPicked;
     bool reachedBase;
     bool isDelivered;
+    bool isfirstBallDelivered; // Flag to check if the first ball is delivered
 } StatusFlags;
 
 // ================================================================== Global Variables ==================================================================
@@ -444,7 +445,10 @@ void deliverPhase() {
 
     if (!status.isBallPicked) {
         status.isDelivered = true; // Ball is delivered
-            currentState = SEARCH;     // Move to search state
+        currentState = SEARCH;     // Move to search state
+        if (!status.isfirstBallDelivered) {
+            status.isfirstBallDelivered = true; // First ball delivered
+        }
     }
 
     // if the ball is still not released, keep pushing it out
@@ -463,6 +467,9 @@ void deliverPhase() {
         if (!status.isBallPicked) {
             status.isDelivered = true; // Ball is delivered
             currentState = SEARCH;     // Move to search state
+            if (!status.isfirstBallDelivered) {
+                status.isfirstBallDelivered = true; // First ball delivered
+            }
             break; // Exit loop once ball is delivered
         }
     }
@@ -508,13 +515,12 @@ void flapperControl(FlapMode mode) {
 }
 
 void searchingAlgo() {
-    static bool firstBallFound = false;
     static int searchIteration = 0;
     const float PAN_ANGLE = 60.0;  // Degrees to pan left/right
     const float INITIAL_DISTANCE = 1.2; // Meters to move forward initially
 
     // Phase 1: Initial ball acquisition (known position)
-    if (!firstBallFound) {
+    if (!isfirstBallDelivered) {
         // Move forward to expected ball location
         moveDistance(INITIAL_DISTANCE);
         
@@ -766,6 +772,9 @@ void returnToBase(){
 
 // ================================================================== Main Task ==================================================================
 task main() {
+    // Initialize all status flags to false
+    status = (StatusFlags){0};
+
     // Initialize sensor reading task
     startTask(readSensorsTask);
     wait1Msec(500); // Allow sensors to stabilize
