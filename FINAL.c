@@ -90,6 +90,7 @@ int IR_values[4]; // 0:FR, 1:FL, 2:BR, 3:BL
 int limitSwitches[3]; // 0:LB, 1:RB, 2:Ball
 int heading;
 int lastBoundaryTurn = -1; // -1 = no previous turn, 0 = left, 1 = right
+float sharpDistances[4]; // Index 0 = FC, 1 = FR, 2 = FL, 3 = BC
 
 
 // ================================================================== Function Prototypes ==================================================================
@@ -114,6 +115,7 @@ void moveTowardsBall(void);
 void decideTurn(float leftDist, float rightDist);
 void returnToBase(void);
 void resetStatus(void);
+float getSharpDistance(tSensors sensor, int analogValue)
 
 
 // Interrupt handlers
@@ -152,6 +154,19 @@ void obstacleInterrupt() {
 }
 
 // ================================================================== Sensor Task ==================================================================
+float getSharpDistance(tSensors sensor, int analogValue) {
+    if (analogValue <= 0) return 80.0; // Max distance fallback
+
+    float voltage = (analogValue * 5.0) / 4095.0; // Convert analog reading to voltage
+
+    switch (sensor) {
+        case sharpFC: return 25.99 / pow(voltage, 1.22);
+        case sharpFR: return 28.37 / pow(voltage, 1.08);
+        case sharpFL: return 26.82 / pow(voltage, 1.28);
+        case sharpBC: return 10.02 / pow(voltage, 1.26);
+        default: return 80.0;
+    }
+}
 task readSensorsTask() {
     while(true) {
         // Read IR sensors
@@ -179,24 +194,24 @@ task readSensorsTask() {
                  SensorValue[compass_Bit3] * 2 + 
                  SensorValue[compass_LSB];
 
-        // Read and convert sharp sensors with filtering
         tSensors sharpSensors[] = {sharpFC, sharpFR, sharpFL, sharpBC};
-        float* distPtr[] = {&distances.distFC, &distances.distFR, 
-                           &distances.distFL, &distances.distBC};
-        
-        for(int i = 0; i < 4; i++) {
+
+        for (int i = 0; i < 4; i++) {
             int sum = 0;
-            for(int j = 0; j < SAMPLE_SIZE; j++) {
+            for (int j = 0; j < SAMPLE_SIZE; j++) {
                 sum += SensorValue[sharpSensors[i]];
                 wait1Msec(2);
             }
-            
-            float voltage = ((sum / SAMPLE_SIZE) * 5.0) / 4095.0;
-            *distPtr[i] = (voltage == 0) ? 80.0 : 
-                         (i == 0) ? 25.99 / pow(voltage, 1.22) :
-                         (i == 1) ? 28.37 / pow(voltage, 1.08) :
-                         (i == 2) ? 26.82 / pow(voltage, 1.28) :
-                         10.02 / pow(voltage, 1.26);
+            int avgAnalog = sum / SAMPLE_SIZE;
+            sharpDistances[i] = getSharpDistance(sharpSensors[i], avgAnalog);
+        
+            // Update distances struct
+            switch(i) {
+                case 0: distances.distFC = sharpDistances[i]; break;
+                case 1: distances.distFR = sharpDistances[i]; break;
+                case 2: distances.distFL = sharpDistances[i]; break;
+                case 3: distances.distBC = sharpDistances[i]; break;
+            }
         }
 
         // Update status flags and trigger interrupts

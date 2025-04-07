@@ -14,7 +14,8 @@
 #pragma config(Sensor, dgtl10, compass_Bit2,   sensorDigitalIn)
 #pragma config(Sensor, dgtl11, compass_MSB,    sensorDigitalIn)
 
-#define SAMPLE_SIZE 5
+#define SAMPLE_SIZE 30  // Increased from 5 for more stable readings
+#define DEBUG_RAW_VALUES false  // Set to true to see raw sensor values
 
 typedef struct {
     float distFC;
@@ -41,6 +42,20 @@ int IR_values[4];
 int limitSwitches[3];
 int heading;
 
+float getSharpDistance(tSensors sensor, int analogValue) {
+    if (analogValue == 0) return 80.0; // Maximum distance
+    
+    float voltage = (analogValue * 5.0) / 4095.0; // Convert to voltage
+    
+    // Different calibration formulas for each sensor
+    if (sensor == sharpFC) return 25.99 / pow(voltage, 1.22);
+    if (sensor == sharpFR) return 28.37 / pow(voltage, 1.08);
+    if (sensor == sharpFL) return 26.82 / pow(voltage, 1.28);
+    if (sensor == sharpBC) return 10.02 / pow(voltage, 1.26);
+    
+    return 80.0; // Default if sensor not matched
+}
+
 void readSensors() {
     // Read IR sensors
     for(int i = 0; i < 4; i++) {
@@ -58,7 +73,7 @@ void readSensors() {
              SensorValue[compass_Bit3] * 2 + 
              SensorValue[compass_LSB];
 
-    // Read sharp sensors
+    // Read sharp sensors with improved averaging
     tSensors sharpSensors[] = {sharpFC, sharpFR, sharpFL, sharpBC};
     float* distPtr[] = {&distances.distFC, &distances.distFR, 
                        &distances.distFL, &distances.distBC};
@@ -67,15 +82,16 @@ void readSensors() {
         int sum = 0;
         for(int j = 0; j < SAMPLE_SIZE; j++) {
             sum += SensorValue[sharpSensors[i]];
-            wait1Msec(2);
+            wait1Msec(10); // Increased delay between samples
         }
         
-        float voltage = ((sum / SAMPLE_SIZE) * 5.0) / 4095.0;
-        *distPtr[i] = (voltage == 0) ? 80.0 : 
-                     (i == 0) ? 25.99 / pow(voltage, 1.22) :
-                     (i == 1) ? 28.37 / pow(voltage, 1.08) :
-                     (i == 2) ? 26.82 / pow(voltage, 1.28) :
-                     10.02 / pow(voltage, 1.26);
+        int avgValue = sum / SAMPLE_SIZE;
+        
+        #if DEBUG_RAW_VALUES
+        writeDebugStreamLine("Raw Sharp %d: %d", i, avgValue);
+        #endif
+        
+        *distPtr[i] = getSharpDistance(sharpSensors[i], avgValue);
     }
 
     // Update status flags
@@ -84,7 +100,7 @@ void readSensors() {
     status.isFrontObstacle = (distances.distFC >= 10.0 && distances.distFC <= 40.0);
     status.isBackObstacle = (distances.distBC >= 10.0 && distances.distBC <= 40.0);
     status.isBallPicked = (limitSwitches[2] == 0);
-    status.panRight = (IR_values[1] == 0 || IR_values[3] == 0) ? true : false;
+    status.panRight = (IR_values[1] == 0 || IR_values[3] == 0);
     status.isBall = ((distances.distFL >= 10.0 && distances.distFL <= 70.0) || 
                    (distances.distFR >= 10.0 && distances.distFR <= 70.0)) &&
                   !(distances.distFC >= 10.0 && distances.distFC <= 40.0);
@@ -112,10 +128,15 @@ void testSensorModule() {
         writeDebugStreamLine("Ball Picked: %d | Pan Right: %d | First Delivered: %d",
                            status.isBallPicked, status.panRight, status.isfirstBallDelivered);
         
-        wait1Msec(1000);
+        wait1Msec(500); // Reduced delay for more frequent updates
     }
 }
 
 task main() {
+    // Initialize debug stream
+    bNxtLCDStatusDisplay = 2; // Enable debug stream
+    clearDebugStream();
+    
+    // Run sensor test
     testSensorModule();
 }
