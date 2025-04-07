@@ -114,8 +114,15 @@ void searchingAlgo() {
     const float INITIAL_DISTANCE = 1.0;
     const float ROW_DISTANCE = 0.2;
 
+    if (status.startLeft) {
+        status.panRight = true; // Start searching to the left
+    } else {
+        status.panRight = false; // Start searching to the right
+    }
+
     if (!status.isfirstBallDelivered && searchIteration == 0) {
         searchIteration++;
+        
         // Initial search pattern
         moveDistance(INITIAL_DISTANCE, false);  // Specify backward as false or true
         wait1Msec(500);
