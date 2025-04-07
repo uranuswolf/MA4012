@@ -8,6 +8,7 @@
 #pragma config(Motor,  port9,  BACK_ROLLER,    tmotorServoContinuousRotation, openLoop)
 
 #define ROLLER_SPEED 127
+#define OFFSET_POWER_FOR_LEFT_MOTOR 1.28 // Adjust this factor based on your robot's calibration
 
 typedef enum RobotState {
     SEARCH,
@@ -85,13 +86,6 @@ void moveDistance(float distance, bool backward = false) {
     motor[motorRight] = 0;
 }
 
-void turnDegrees(float degrees, bool right = false) {
-    motor[motorLeft] = right ? 40 : -40;
-    motor[motorRight] = right ? -40 : 40;
-    wait1Msec(degrees * 10);
-    motor[motorLeft] = 0;
-    motor[motorRight] = 0;
-}
 
 void searchPhase() {
     writeDebugStreamLine("SEARCH PHASE");

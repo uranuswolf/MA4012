@@ -42,108 +42,71 @@ int distanceToTicks(float distance) {
     return (int)(distance /DISTANCE_PER_TICK);
 }
 
+int distanceToTicks(float distance) {
+    return (int)(distance / DISTANCE_PER_TICK);
+}
+
 void moveDistance(float distance, bool backward) {
     float realDistance = distance * DISTANCE_CORRECTION_FACTOR;
     int targetTicks = distanceToTicks(realDistance);
 
-    int maxPowerRight = (backward ? -1 : 1) * BASE_POWER;
-    int maxPowerLeft  = (backward ? -1 : 1) * BASE_POWER * OFFSET_POWER_FOR_LEFT_MOTOR;
-
-    int currentRightPower = 0;
-    int currentLeftPower = 0;
-    int accelRate = 10;
-
-    // Reset encoders
     SensorValue[LEFT_ENCODER] = 0;
     SensorValue[RIGHT_ENCODER] = 0;
 
-    while (true) {
-        int leftTicks  = abs(SensorValue[LEFT_ENCODER]);
-        int rightTicks = abs(SensorValue[RIGHT_ENCODER]);
+    if (backward) {
+        motor[motorLeft] = -(OFFSET_POWER_FOR_LEFT_MOTOR * BASE_POWER);
+        motor[motorRight] = -BASE_POWER;
+          
+        
+          
+    } else {
+        motor[motorLeft] = (OFFSET_POWER_FOR_LEFT_MOTOR  * BASE_POWER);
+        motor[motorRight] = BASE_POWER;
+          
+        
+          
+    }
 
-        if (leftTicks >= targetTicks && rightTicks >= targetTicks) break;
-
-        int remainingTicks = targetTicks - ((leftTicks > rightTicks) ? leftTicks : rightTicks);
-
-        // Choose whether to accelerate or decelerate
-        int powerRight = maxPowerRight;
-        int powerLeft  = maxPowerLeft;
-
-        // If within 30% of target, start decelerating
-        if (remainingTicks < targetTicks * 0.3) {
-            powerRight = maxPowerRight * remainingTicks / (targetTicks * 0.3);
-            powerLeft  = maxPowerLeft  * remainingTicks / (targetTicks * 0.3);
-        }
-
-        // Smooth acceleration
-        if (abs(currentRightPower) < abs(powerRight)) {
-            currentRightPower += accelRate * (powerRight > 0 ? 1 : -1);
-            if ((powerRight > 0 && currentRightPower > powerRight) ||
-                (powerRight < 0 && currentRightPower < powerRight)) {
-                currentRightPower = powerRight;  // Cap to max power
-            }
-        } else {
-            // Smooth deceleration path
-            if (abs(currentRightPower) > abs(powerRight)) {
-                currentRightPower -= accelRate * (powerRight > 0 ? 1 : -1);
-                if ((powerRight > 0 && currentRightPower < powerRight) ||
-                    (powerRight < 0 && currentRightPower > powerRight)) {
-                    currentRightPower = powerRight;  // Smooth deceleration
-                }
-            } else {
-                currentRightPower = powerRight;  // Final stop at target power
-            }
-        }
-
-        if (abs(currentLeftPower) < abs(powerLeft)) {
-            currentLeftPower += accelRate * (powerLeft > 0 ? 1 : -1);
-            if ((powerLeft > 0 && currentLeftPower > powerLeft) ||
-                (powerLeft < 0 && currentLeftPower < powerLeft)) {
-                currentLeftPower = powerLeft;  // Cap to max power
-            }
-        } else {
-            // Smooth deceleration path
-            if (abs(currentLeftPower) > abs(powerLeft)) {
-                currentLeftPower -= accelRate * (powerLeft > 0 ? 1 : -1);
-                if ((powerLeft > 0 && currentLeftPower < powerLeft) ||
-                    (powerLeft < 0 && currentLeftPower > powerLeft)) {
-                    currentLeftPower = powerLeft;  // Smooth deceleration
-                }
-            } else {
-                currentLeftPower = powerLeft;  // Final stop at target power
-            }
-        }
-
-        motor[motorLeft] = currentLeftPower;
-        motor[motorRight] = currentRightPower;
-
+    while (abs(SensorValue[LEFT_ENCODER]) < targetTicks && 
+           abs(SensorValue[RIGHT_ENCODER]) < targetTicks) {
         wait1Msec(10);
     }
 
-    // Full stop to cancel any lingering movement
     motor[motorLeft] = 0;
     motor[motorRight] = 0;
+      
+ 
+      
 }
 
 void turnDegrees(float degrees, bool right) {
     float realDegrees = degrees * 2.5;
-    float arcLength = (realDegrees / 180.0) * (PI * WHEEL_BASE);
+    float turningCircumference = PI * WHEEL_BASE;
+    float arcLength = (realDegrees / 180.0) * turningCircumference;
     int targetTicks = distanceToTicks(arcLength);
-    int reducedSpeed = ROLLER_SPEED * 0.7;
 
     SensorValue[LEFT_ENCODER] = 0;
     SensorValue[RIGHT_ENCODER] = 0;
 
-    motor[motorLeft] = right ? reducedSpeed : -reducedSpeed;
-    motor[motorRight] = right ? -reducedSpeed : reducedSpeed;
+    int reducedSpeed = 127 * 0.7;
 
-    while(abs(SensorValue[LEFT_ENCODER]) < targetTicks && 
-          abs(SensorValue[RIGHT_ENCODER]) < targetTicks) {
+    if (right) {
+        motor[motorLeft] = reducedSpeed;
+        motor[motorRight] = -reducedSpeed;
+    } else {
+        motor[motorLeft] = -reducedSpeed;
+        motor[motorRight] = reducedSpeed;
+    }
+
+    while (abs(SensorValue[LEFT_ENCODER]) < targetTicks && 
+           abs(SensorValue[RIGHT_ENCODER]) < targetTicks) {
         wait1Msec(10);
     }
+
     motor[motorLeft] = 0;
     motor[motorRight] = 0;
 }
+
 
 void searchingAlgo() {
     static int searchIteration = 0;
@@ -152,6 +115,7 @@ void searchingAlgo() {
     const float ROW_DISTANCE = 0.2;
 
     if (!status.isfirstBallDelivered && searchIteration == 0) {
+        searchIteration++;
         // Initial search pattern
         moveDistance(INITIAL_DISTANCE, false);  // Specify backward as false or true
         wait1Msec(500);
@@ -173,8 +137,6 @@ void searchingAlgo() {
         wait1Msec(500);
         turnDegrees(PAN_ANGLE, !status.panRight);  // Specify right as true or false
         wait1Msec(500);
-
-        searchIteration++;
     }
     else {
         // Spiral search pattern

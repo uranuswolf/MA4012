@@ -34,6 +34,7 @@
 #define DISTANCE_CORRECTION_FACTOR 3.5 // Adjust this factor based on your robot's calibration
 #define OFFSET_POWER_FOR_LEFT_MOTOR 1.28 // Adjust this factor based on your robot's calibration
 
+
 // ================================================================== Types & Enums ==================================================================
 typedef enum RobotState {
     SEARCH,
@@ -71,6 +72,7 @@ typedef struct {
     bool isDelivered;
     bool isfirstBallDelivered; // Flag to check if the first ball is delivered
     bool panRight; // Flag to check if should pan left or right at the start of the search
+    bool startLeft; // Flag to check if should start left or right at the start of the search
 } StatusFlags;
 
 // ================================================================== Global Variables ==================================================================
@@ -164,6 +166,11 @@ task readSensorsTask() {
 
        // Ball pickup status updates automatically based on limit switch
         status.isBallPicked = (limitSwitches[2] == 0);
+        
+        if (!status.startLeft && limitSwitches[0] == 0) {
+            status.startLeft = true;
+        }
+        
 
 
         // Read compass
@@ -237,101 +244,59 @@ void moveDistance(float distance, bool backward) {
     float realDistance = distance * DISTANCE_CORRECTION_FACTOR;
     int targetTicks = distanceToTicks(realDistance);
 
-    int maxPowerRight = (backward ? -1 : 1) * BASE_POWER;
-    int maxPowerLeft  = (backward ? -1 : 1) * BASE_POWER * OFFSET_POWER_FOR_LEFT_MOTOR;
-
-    int currentRightPower = 0;
-    int currentLeftPower = 0;
-    int accelRate = 10;
-
-    // Reset encoders
     SensorValue[LEFT_ENCODER] = 0;
     SensorValue[RIGHT_ENCODER] = 0;
 
-    while (true) {
-        int leftTicks  = abs(SensorValue[LEFT_ENCODER]);
-        int rightTicks = abs(SensorValue[RIGHT_ENCODER]);
+    if (backward) {
+        motor[motorLeft] = -(OFFSET_POWER_FOR_LEFT_MOTOR * BASE_POWER);
+        motor[motorRight] = -BASE_POWER;
+          
+        
+          
+    } else {
+        motor[motorLeft] = (OFFSET_POWER_FOR_LEFT_MOTOR  * BASE_POWER);
+        motor[motorRight] = BASE_POWER;
+          
+        
+          
+    }
 
-        if (leftTicks >= targetTicks && rightTicks >= targetTicks) break;
-
-        int remainingTicks = targetTicks - ((leftTicks > rightTicks) ? leftTicks : rightTicks);
-
-        // Choose whether to accelerate or decelerate
-        int powerRight = maxPowerRight;
-        int powerLeft  = maxPowerLeft;
-
-        // If within 30% of target, start decelerating
-        if (remainingTicks < targetTicks * 0.3) {
-            powerRight = maxPowerRight * remainingTicks / (targetTicks * 0.3);
-            powerLeft  = maxPowerLeft  * remainingTicks / (targetTicks * 0.3);
-        }
-
-        // Smooth acceleration
-        if (abs(currentRightPower) < abs(powerRight)) {
-            currentRightPower += accelRate * (powerRight > 0 ? 1 : -1);
-            if ((powerRight > 0 && currentRightPower > powerRight) ||
-                (powerRight < 0 && currentRightPower < powerRight)) {
-                currentRightPower = powerRight;  // Cap to max power
-            }
-        } else {
-            // Smooth deceleration path
-            if (abs(currentRightPower) > abs(powerRight)) {
-                currentRightPower -= accelRate * (powerRight > 0 ? 1 : -1);
-                if ((powerRight > 0 && currentRightPower < powerRight) ||
-                    (powerRight < 0 && currentRightPower > powerRight)) {
-                    currentRightPower = powerRight;  // Smooth deceleration
-                }
-            } else {
-                currentRightPower = powerRight;  // Final stop at target power
-            }
-        }
-
-        if (abs(currentLeftPower) < abs(powerLeft)) {
-            currentLeftPower += accelRate * (powerLeft > 0 ? 1 : -1);
-            if ((powerLeft > 0 && currentLeftPower > powerLeft) ||
-                (powerLeft < 0 && currentLeftPower < powerLeft)) {
-                currentLeftPower = powerLeft;  // Cap to max power
-            }
-        } else {
-            // Smooth deceleration path
-            if (abs(currentLeftPower) > abs(powerLeft)) {
-                currentLeftPower -= accelRate * (powerLeft > 0 ? 1 : -1);
-                if ((powerLeft > 0 && currentLeftPower < powerLeft) ||
-                    (powerLeft < 0 && currentLeftPower > powerLeft)) {
-                    currentLeftPower = powerLeft;  // Smooth deceleration
-                }
-            } else {
-                currentLeftPower = powerLeft;  // Final stop at target power
-            }
-        }
-
-        motor[motorLeft] = currentLeftPower;
-        motor[motorRight] = currentRightPower;
-
+    while (abs(SensorValue[LEFT_ENCODER]) < targetTicks && 
+           abs(SensorValue[RIGHT_ENCODER]) < targetTicks) {
         wait1Msec(10);
     }
 
-    // Full stop to cancel any lingering movement
     motor[motorLeft] = 0;
     motor[motorRight] = 0;
+      
+ 
+      
 }
 
 void turnDegrees(float degrees, bool right) {
     float realDegrees = degrees * 2.5;
-    float arcLength = (realDegrees / 180.0) * (PI * WHEEL_BASE);
+    float turningCircumference = PI * WHEEL_BASE;
+    float arcLength = (realDegrees / 180.0) * turningCircumference;
     int targetTicks = distanceToTicks(arcLength);
-    int reducedSpeed = ROLLER_SPEED * 0.7;
 
     SensorValue[LEFT_ENCODER] = 0;
     SensorValue[RIGHT_ENCODER] = 0;
 
-    motor[motorLeft] = right ? reducedSpeed : -reducedSpeed;
-    motor[motorRight] = right ? -reducedSpeed : reducedSpeed;
+    int reducedSpeed = 127 * 0.7;
 
-    while(abs(SensorValue[LEFT_ENCODER]) < targetTicks && 
-          abs(SensorValue[RIGHT_ENCODER]) < targetTicks) {
+    if (right) {
+        motor[motorLeft] = reducedSpeed;
+        motor[motorRight] = -reducedSpeed;
+    } else {
+        motor[motorLeft] = -reducedSpeed;
+        motor[motorRight] = reducedSpeed;
+    }
+
+    while (abs(SensorValue[LEFT_ENCODER]) < targetTicks && 
+           abs(SensorValue[RIGHT_ENCODER]) < targetTicks) {
         wait1Msec(10);
     }
+
     motor[motorLeft] = 0;
     motor[motorRight] = 0;
 }
@@ -537,8 +502,15 @@ void searchingAlgo() {
     const float INITIAL_DISTANCE = 1.0;
     const float ROW_DISTANCE = 0.2;
 
+    if (status.startLeft) {
+        status.panRight = true; // Start searching to the left
+    } else {
+        status.panRight = false; // Start searching to the right
+    }
+
     // Phase 1: Runs exactly once at startup (before first delivery)
     if (!status.isfirstBallDelivered && searchIteration == 0) {
+        searchIteration++;  // Increment here to ensure Phase 1 runs ONLY ONCE
         // 1st pan in 1st row 
         moveDistance(INITIAL_DISTANCE);
         wait1Msec(500);
@@ -563,7 +535,6 @@ void searchingAlgo() {
         turnDegrees(PAN_ANGLE, !status.panRight);
         wait1Msec(500);
 
-        searchIteration++;  // Increment here to ensure Phase 1 runs ONLY ONCE
     }
     else {
         // Phase 2: Competitive/spiral search (after first delivery or if Phase 1 fails)
