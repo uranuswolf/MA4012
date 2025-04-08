@@ -107,6 +107,7 @@ void decideTurn(float leftDist, float rightDist);
 void handleObstacle(void);
 void handleBoundary(void);
 void returnToBase(void);
+float compass(int heading);
 
 
 //============================================================ Helper Functions ==================================================================
@@ -188,7 +189,7 @@ void readSensors() {
     status.panRight = (limitSwitches[0] == 0) ? true : false; // default to true
     panRightInitialized = true;
 }
-   
+
     // Read compass
     heading = SensorValue[compass_MSB] * 8 + 
              SensorValue[compass_Bit2] * 4 + 
@@ -283,6 +284,29 @@ void turnDegrees(float degrees, bool right) {
 
     motor[motorLeft] = 0;
     motor[motorRight] = 0;
+}
+
+float compass(int heading){
+	
+	switch(heading){
+	case 7: return 0; 		//W
+		break;
+	case 3: return 45; 		//SW
+		break;
+	case 11: return 90; 	//S
+		break;
+	case 9: return 135; 	//SE
+		break;
+	case 13: return 180;	//E
+		break;
+	case 12: return 225; 	//NE
+		break;
+	case 14: return 270; 	//W
+		break;
+	case 6: return 315; 	//NW
+		break;
+	}
+	return -1;
 }
 
 
@@ -445,30 +469,34 @@ void handleObstacle() {
 
 void returnToBase() {
     while (true) {
-        int target = 135;
-        int degree = heading - target;
+        int target = 180;
+        int compassheading= compass(heading); // Get the compass heading
+        int degree = compassheading - target;
         if (degree < 0) {
             turnDegrees(degree, true);
         } else {
             turnDegrees(degree);
         }
-
-        moveDistance(MAX_DISTANCE / 100.0, true); //Move backwards
-
-        // Check if the condition to stop is met
-        if (heading == 135 &&
-            (limitSwitches[0] == 0 || limitSwitches[1] == 0) && //0 means limit swtich is pressed
-            (IR_values[2] == 0 && IR_values[3] == 0)) {
-            status.reachedBase = true;
-            break;
+        if (compassheading == target){
+            moveDistance(MAX_DISTANCE / 100.0, true); //Move backwards
+        }    
         }
 
+        if (currentState == RETURN && !status.reachedBase) {
+            if ((limitSwitches[0] == 0 || limitSwitches[1] == 0) && // 0 means limit switch is pressed
+                (IR_values[2] == 0 && IR_values[3] == 0)) {
+                status.reachedBase = true;
+                break;
+            }
+        }
+        
         // Else keep repeating forward, reorient, backward until the condition is true
         while (true) {
             moveDistance(0.25); // Move forward 0.25m
-
+            int target = 180;
+            int compassheading= compass(heading);
             // Reorient to 135 degrees again
-            degree = heading - target;
+            int degree = compassheading - target;
             if (degree < 0) {
                 turnDegrees(degree, true);
             } else {
@@ -478,7 +506,7 @@ void returnToBase() {
             moveDistance(0.4, true); // Move backward 0.4m
 
             // Check condition again
-            if (heading == 135 &&
+            if (compassheading == target &&
                 (limitSwitches[0] == 0 || limitSwitches[1] == 0) &&
                 (IR_values[2] == 0 && IR_values[3] == 0)) {
                 status.reachedBase = true;
@@ -488,7 +516,7 @@ void returnToBase() {
             wait1Msec(50);
         }
     }
-}
+
 
 //============================================================ Task Definitions ==================================================================
 
@@ -553,22 +581,22 @@ void searchPhase() {
         // Step 1: Handle boundary first
         if (status.isBoundary) {
             stopTask(searchingBallTask); 
-            frontRollerControl(STOP); // Stop the front roller
+            //frontRollerControl(STOP); // Stop the front roller
             handleBoundary();
             wait1Msec(500); // small pause to stabilize
             startTask(searchingBallTask); // Restart searching after handling obstacle
-            frontRollerControl(INTAKE); // Resume roller intake
+            //frontRollerControl(INTAKE); // Resume roller intake
             continue;       // restart loop
         }
 
         // If an obstacle is detected, handle it
         if(status.isFrontObstacle || status.isBackObstacle) {
             stopTask(searchingBallTask); 
-            frontRollerControl(STOP); // Stop the front roller
+            //frontRollerControl(STOP); // Stop the front roller
             handleObstacle(); // Stop search and handle the obstacle
             wait1Msec(500); // small pause to stabilize
             startTask(searchingBallTask); // Restart searching after handling obstacle
-            frontRollerControl(INTAKE); // Resume roller intake
+            //frontRollerControl(INTAKE); // Resume roller intake
             continue;       // restart loop
         }
 
@@ -581,7 +609,7 @@ void searchPhase() {
         if(status.isBallPicked) {  // Bypass collectPhase and jump straight to RETURN if ball is picked
             currentState = RETURN;
             stopTask(searchingBallTask); // Stop searching if ball is picked
-            frontRollerControl(STOP); // Stop the front roller
+            //frontRollerControl(STOP); // Stop the front roller
             break;
         }
 
@@ -598,22 +626,22 @@ void collectPhase() {
         // Step 1: Handle boundary first
         if (status.isBoundary) {
             stopTask(moveTowardsBallTask); 
-            frontRollerControl(STOP); // Stop the front roller
+            //frontRollerControl(STOP); // Stop the front roller
             handleBoundary();
             wait1Msec(500); // small pause to stabilize
             startTask(moveTowardsBallTask); // Restart searching after handling obstacle
-            frontRollerControl(INTAKE); // Resume roller intake
+            //frontRollerControl(INTAKE); // Resume roller intake
             continue;       // restart loop
         }
 
         // If an obstacle is detected, handle it
         if(status.isFrontObstacle || status.isBackObstacle) {
             stopTask(moveTowardsBallTask); 
-            frontRollerControl(STOP); // Stop the front roller
+            //frontRollerControl(STOP); // Stop the front roller
             handleObstacle(); // Stop search and handle the obstacle
             wait1Msec(500); // small pause to stabilize
             startTask(moveTowardsBallTask); // Restart searching after handling obstacle
-            frontRollerControl(INTAKE); // Resume roller intake
+            //frontRollerControl(INTAKE); // Resume roller intake
             continue;       // restart loop
         }
 

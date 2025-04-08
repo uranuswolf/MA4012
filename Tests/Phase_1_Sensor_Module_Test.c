@@ -50,6 +50,30 @@ typedef enum RobotState {
 
 RobotState currentState = SEARCH;
 
+float compass(int heading){
+	
+	switch(heading){
+	case 7: return 0; 		//W
+		break;
+	case 3: return 45; 		//SW
+		break;
+	case 11: return 90; 	//S
+		break;
+	case 9: return 135; 	//SE
+		break;
+	case 13: return 180;	//E
+		break;
+	case 12: return 225; 	//NE
+		break;
+	case 14: return 270; 	//W
+		break;
+	case 6: return 315; 	//NW
+		break;
+	}
+	return -1;
+}
+
+
 float getSharpDistance(tSensors sensor, int analogValue) {
     if (analogValue == 0) return 90.0; // max range
 
@@ -102,9 +126,9 @@ void readSensors() {
     status.isBoundary = (IR_values[0] || IR_values[1]  || 
                          IR_values[2] || IR_values[3] );
 
-    status.isFrontObstacle = (distances.distFC >= 5.0 && distances.distFC <= 40.0);
+    status.isFrontObstacle = (distances.distFC < 30.0);
 
-    status.isBackObstacle = (distances.distBC >= 5.0 && distances.distBC <= 40.0);
+    status.isBackObstacle = (distances.distBC < 30.0);
 
     // Only allow resetting isBallPicked during RETURN state
     if (currentState == DELIVER) {
@@ -116,8 +140,8 @@ void readSensors() {
 
 
 
-    status.isBall = ((distances.distFL >= 5.0 && distances.distFL <= 70.0) || 
-    (distances.distFR >= 5.0 && distances.distFR <= 70.0)) &&
+    status.isBall = ((distances.distFL <= 30) || 
+    (distances.distFR <=30)) &&
     (!status.isFrontObstacle);
 
 }
@@ -132,7 +156,7 @@ void testSensorModule() {
                            IR_values[0], IR_values[1], IR_values[2], IR_values[3]);
         writeDebugStreamLine("Limit Switches: LB=%d RB=%d Ball=%d",
                            limitSwitches[0], limitSwitches[1], limitSwitches[2]);
-        writeDebugStreamLine("Compass Heading: %d", heading);
+        writeDebugStreamLine("Compass Heading: %d", compass(heading));
         writeDebugStreamLine("Distances: FC=%.1fcm FR=%.1fcm FL=%.1fcm BC=%.1fcm",
                            distances.distFC, distances.distFR, 
                            distances.distFL, distances.distBC);

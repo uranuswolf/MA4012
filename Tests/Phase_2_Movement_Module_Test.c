@@ -67,7 +67,6 @@ void turnDegrees(float degrees, bool right) {
     motor[motorLeft] = 0;
     motor[motorRight] = 0;
 }
-
 void testMovementModule() {
     // Left turn test
     writeDebugStreamLine("Testing left turn (90 degrees)");
