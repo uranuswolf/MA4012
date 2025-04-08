@@ -2,10 +2,10 @@
 #pragma config(Sensor, in2,    sharpFL,        sensorAnalog)
 #pragma config(Sensor, in7,    sharpBC,        sensorAnalog)
 #pragma config(Sensor, in1,    sharpFR,        sensorAnalog)
-#pragma config(Sensor, in3,    IR_A,           sensorAnalog)
-#pragma config(Sensor, in4,    IR_B,           sensorAnalog)
-#pragma config(Sensor, in5,    IR_C,           sensorAnalog)
-#pragma config(Sensor, in6,    IR_D,           sensorAnalog)
+#pragma config(Sensor, in6,    IR_A,           sensorAnalog)
+#pragma config(Sensor, in5,    IR_B,           sensorAnalog)
+#pragma config(Sensor, in4,    IR_C,           sensorAnalog)
+#pragma config(Sensor, in3,    IR_D,           sensorAnalog)
 #pragma config(Sensor, dgtl6,  limitswitchLB,  sensorDigitalIn)
 #pragma config(Sensor, dgtl5,  limitswitchRB,  sensorDigitalIn)
 #pragma config(Sensor, dgtl7,  limitswitchBall,sensorDigitalIn)
@@ -115,7 +115,7 @@ void moveTowardsBall(void);
 void decideTurn(float leftDist, float rightDist);
 void returnToBase(void);
 void resetStatus(void);
-float getSharpDistance(tSensors sensor, int analogValue)
+float getSharpDistance(tSensors sensor, int analogValue);
 
 
 // Interrupt handlers
@@ -168,10 +168,11 @@ float getSharpDistance(tSensors sensor, int analogValue) {
     }
 }
 task readSensorsTask() {
+    bool hasPanDirectionSet = false; // Only allow setting panRight once
     while(true) {
         // Read IR sensors
         for(int i = 0; i < 4; i++) {
-            IR_values[i] = SensorValue[IR_A + i] < 300 ? 0 : 1;
+            IR_values[i] = SensorValue[IR_A + i] < 1000 ? 0 : 1;
         }
 
         // Read limit switches
@@ -181,12 +182,12 @@ task readSensorsTask() {
 
        // Ball pickup status updates automatically based on limit switch
         status.isBallPicked = (limitSwitches[2] == 0);
-        
-        if (!status.startLeft && limitSwitches[0] == 0) {
-            status.startLeft = true;
+            
+        // Set panRight only once when left switch is pressed
+        if (!hasPanDirectionSet && limitSwitches[0] == 0) {
+            status.panRight = false;  // or false depending on your logic
+            hasPanDirectionSet = true;
         }
-        
-
 
         // Read compass
         heading = SensorValue[compass_MSB] * 8 + 
@@ -221,7 +222,7 @@ task readSensorsTask() {
         status.isFrontObstacle = (distances.distFC >= 10.0 && distances.distFC <= 40.0);
         status.isBackObstacle = (distances.distBC >= 10.0 && distances.distBC <= 40.0);
     
-        status.panRight = (IR_values[1] == 0 || IR_values[3] == 0) ? true : false;
+       
         
         // Boundary has priority over obstacle
         if (status.isBoundary && !boundaryInterruptActive) {
@@ -514,41 +515,35 @@ void flapperControl(FlapMode mode) {
 void searchingAlgo() {
     static int searchIteration = 0;
     const float PAN_ANGLE = 20.0;
-    const float INITIAL_DISTANCE = 1.0;
-    const float ROW_DISTANCE = 0.2;
-
-    if (status.startLeft) {
-        status.panRight = true; // Start searching to the left
-    } else {
-        status.panRight = false; // Start searching to the right
-    }
+    const float INITIAL_DISTANCE = 1.2;
+    const float ROW_DISTANCE = 0.3;
 
     // Phase 1: Runs exactly once at startup (before first delivery)
     if (!status.isfirstBallDelivered && searchIteration == 0) {
         searchIteration++;  // Increment here to ensure Phase 1 runs ONLY ONCE
         // 1st pan in 1st row 
         moveDistance(INITIAL_DISTANCE);
-        wait1Msec(500);
+        wait1Msec(1000);
         turnDegrees(PAN_ANGLE, status.panRight);
-        wait1Msec(500);
+        wait1Msec(1000);
         turnDegrees(PAN_ANGLE, !status.panRight);
-        wait1Msec(500);
+        wait1Msec(1000);
 
         // 2nd pan in 2nd row 
         moveDistance(ROW_DISTANCE);
-        wait1Msec(500);
+        wait1Msec(1000);
         turnDegrees(PAN_ANGLE, status.panRight);
-        wait1Msec(500);
+        wait1Msec(1000);
         turnDegrees(PAN_ANGLE, !status.panRight);
-        wait1Msec(500);
+        wait1Msec(1000);
             
         // 3rd pan in 3rd row
         moveDistance(ROW_DISTANCE);
-        wait1Msec(500);
+        wait1Msec(1000);
         turnDegrees(PAN_ANGLE, status.panRight);
-        wait1Msec(500);
+        wait1Msec(1000);
         turnDegrees(PAN_ANGLE, !status.panRight);
-        wait1Msec(500);
+        wait1Msec(1000);
 
     }
     else {

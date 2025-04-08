@@ -18,10 +18,10 @@ typedef enum FlapMode {
 void frontRollerControl(RollerMode mode) {
     switch(mode){
         case INTAKE:
-            motor[FRONT_ROLLER] = -ROLLER_SPEED;
+            motor[FRONT_ROLLER] = ROLLER_SPEED;
             break;
         case OUTPUT:
-            motor[FRONT_ROLLER] = ROLLER_SPEED;
+            motor[FRONT_ROLLER] = -ROLLER_SPEED;
             break;
         case STOP:
             motor[FRONT_ROLLER] = 0;
@@ -70,6 +70,10 @@ void testActuatorsModule() {
     
     writeDebugStreamLine("Testing flapper PUSH");
     flapperControl(PUSH);
+    wait1Msec(2000);
+    
+    writeDebugStreamLine("Testing flapper OPEN");
+    flapperControl(OPEN);
     wait1Msec(2000);
     
     writeDebugStreamLine("Actuator tests complete!");

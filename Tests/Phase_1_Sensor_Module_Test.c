@@ -2,10 +2,10 @@
 #pragma config(Sensor, in2,    sharpFL,        sensorAnalog)
 #pragma config(Sensor, in7,    sharpBC,        sensorAnalog)
 #pragma config(Sensor, in1,    sharpFR,        sensorAnalog)
-#pragma config(Sensor, in3,    IR_A,           sensorAnalog)
-#pragma config(Sensor, in4,    IR_B,           sensorAnalog)
-#pragma config(Sensor, in5,    IR_C,           sensorAnalog)
-#pragma config(Sensor, in6,    IR_D,           sensorAnalog)
+#pragma config(Sensor, in6,    IR_A,           sensorAnalog)
+#pragma config(Sensor, in5,    IR_B,           sensorAnalog)
+#pragma config(Sensor, in4,    IR_C,           sensorAnalog)
+#pragma config(Sensor, in3,    IR_D,           sensorAnalog)
 #pragma config(Sensor, dgtl6,  limitswitchLB,  sensorDigitalIn)
 #pragma config(Sensor, dgtl5,  limitswitchRB,  sensorDigitalIn)
 #pragma config(Sensor, dgtl7,  limitswitchBall,sensorDigitalIn)
@@ -14,8 +14,6 @@
 #pragma config(Sensor, dgtl10, compass_Bit2,   sensorDigitalIn)
 #pragma config(Sensor, dgtl11, compass_MSB,    sensorDigitalIn)
 
-#define SAMPLE_SIZE 30  // Increased from 5 for more stable readings
-#define DEBUG_RAW_VALUES false  // Set to true to see raw sensor values
 
 typedef struct {
     float distFC;
@@ -41,25 +39,36 @@ StatusFlags status;
 int IR_values[4];
 int limitSwitches[3];
 int heading;
+bool panRightInitialized = false;
+
+typedef enum RobotState {
+    SEARCH,
+    COLLECT,
+    RETURN,
+    DELIVER
+} RobotState;
+
+RobotState currentState = SEARCH;
 
 float getSharpDistance(tSensors sensor, int analogValue) {
-    if (analogValue == 0) return 80.0; // Maximum distance
-    
-    float voltage = (analogValue * 5.0) / 4095.0; // Convert to voltage
-    
-    // Different calibration formulas for each sensor
+    if (analogValue == 0) return 90.0; // max range
+
+    float voltage = (analogValue * 5.0) / 4095.0; // ADC to voltage
+
+    // Calibration for each sensor
     if (sensor == sharpFC) return 25.99 / pow(voltage, 1.22);
     if (sensor == sharpFR) return 28.37 / pow(voltage, 1.08);
     if (sensor == sharpFL) return 26.82 / pow(voltage, 1.28);
     if (sensor == sharpBC) return 10.02 / pow(voltage, 1.26);
-    
-    return 80.0; // Default if sensor not matched
+
+    return 80.0; // default if unknown sensor
 }
 
 void readSensors() {
     // Read IR sensors
-    for(int i = 0; i < 4; i++) {
-        IR_values[i] = SensorValue[IR_A + i] < 300 ? 0 : 1;
+    tSensors IR_ports[4] = {IR_A, IR_B, IR_C, IR_D};
+    for (int i = 0; i < 4; i++) {
+        IR_values[i] = SensorValue[IR_ports[i]] < 2700 ? 1 : 0;
     }
 
     // Read limit switches
@@ -67,43 +76,50 @@ void readSensors() {
     limitSwitches[1] = SensorValue[limitswitchRB];
     limitSwitches[2] = SensorValue[limitswitchBall];
 
+   if (!panRightInitialized) {
+    status.panRight = (limitSwitches[0] == 0) ? true : false; // default to true
+    panRightInitialized = true;
+}
+   
     // Read compass
     heading = SensorValue[compass_MSB] * 8 + 
              SensorValue[compass_Bit2] * 4 + 
              SensorValue[compass_Bit3] * 2 + 
              SensorValue[compass_LSB];
 
-    // Read sharp sensors with improved averaging
-    tSensors sharpSensors[] = {sharpFC, sharpFR, sharpFL, sharpBC};
-    float* distPtr[] = {&distances.distFC, &distances.distFR, 
-                       &distances.distFL, &distances.distBC};
-    
-    for(int i = 0; i < 4; i++) {
-        int sum = 0;
-        for(int j = 0; j < SAMPLE_SIZE; j++) {
-            sum += SensorValue[sharpSensors[i]];
-            wait1Msec(10); // Increased delay between samples
-        }
-        
-        int avgValue = sum / SAMPLE_SIZE;
-        
-        #if DEBUG_RAW_VALUES
-        writeDebugStreamLine("Raw Sharp %d: %d", i, avgValue);
-        #endif
-        
-        *distPtr[i] = getSharpDistance(sharpSensors[i], avgValue);
-    }
+   // Read sharp sensors with improved averaging
+   int rawFC = SensorValue[sharpFC];
+   int rawFR = SensorValue[sharpFR];
+   int rawFL = SensorValue[sharpFL];
+   int rawBC = SensorValue[sharpBC];
+
+   distances.distFC = getSharpDistance(sharpFC, rawFC); // Update the distances struct
+   distances.distFR = getSharpDistance(sharpFR, rawFR); // Update the distances struct
+   distances.distFL = getSharpDistance(sharpFL, rawFL); // Update the distances struct
+   distances.distBC = getSharpDistance(sharpBC, rawBC); // Update the distances struct
 
     // Update status flags
-    status.isBoundary = (IR_values[0] == 0 || IR_values[1] == 0 || 
-                       IR_values[2] == 0 || IR_values[3] == 0);
-    status.isFrontObstacle = (distances.distFC >= 10.0 && distances.distFC <= 40.0);
-    status.isBackObstacle = (distances.distBC >= 10.0 && distances.distBC <= 40.0);
-    status.isBallPicked = (limitSwitches[2] == 0);
-    status.panRight = (IR_values[1] == 0 || IR_values[3] == 0);
-    status.isBall = ((distances.distFL >= 10.0 && distances.distFL <= 70.0) || 
-                   (distances.distFR >= 10.0 && distances.distFR <= 70.0)) &&
-                  !(distances.distFC >= 10.0 && distances.distFC <= 40.0);
+    status.isBoundary = (IR_values[0] || IR_values[1]  || 
+                         IR_values[2] || IR_values[3] );
+
+    status.isFrontObstacle = (distances.distFC >= 5.0 && distances.distFC <= 40.0);
+
+    status.isBackObstacle = (distances.distBC >= 5.0 && distances.distBC <= 40.0);
+
+    // Only allow resetting isBallPicked during RETURN state
+    if (currentState == DELIVER) {
+    status.isBallPicked = (limitSwitches[2] == 0); 
+     } else {
+    // Once it's true, don't let it go false until RETURN state
+    status.isBallPicked = status.isBallPicked || (limitSwitches[2] == 0);
+}
+
+
+
+    status.isBall = ((distances.distFL >= 5.0 && distances.distFL <= 70.0) || 
+    (distances.distFR >= 5.0 && distances.distFR <= 70.0)) &&
+    (!status.isFrontObstacle);
+
 }
 
 void testSensorModule() {
@@ -127,16 +143,18 @@ void testSensorModule() {
                            status.isFrontObstacle, status.isBackObstacle);
         writeDebugStreamLine("Ball Picked: %d | Pan Right: %d | First Delivered: %d",
                            status.isBallPicked, status.panRight, status.isfirstBallDelivered);
+        writeDebugStreamLine("Raw IR: A=%d B=%d C=%d D=%d", 
+    SensorValue[IR_A], SensorValue[IR_B], SensorValue[IR_C], SensorValue[IR_D]);
+
         
-        wait1Msec(500); // Reduced delay for more frequent updates
+        wait1Msec(1000); // Reduced delay for more frequent updates
     }
 }
 
 task main() {
-    // Initialize debug stream
-    bNxtLCDStatusDisplay = 2; // Enable debug stream
+    // Clear the debug stream (no need for NXT LCD display setting)
     clearDebugStream();
     
-    // Run sensor test
+    // Run the sensor test
     testSensorModule();
 }

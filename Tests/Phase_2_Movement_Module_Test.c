@@ -10,7 +10,7 @@
 #define BASE_POWER 50
 #define CIRCUMFERENCE (WHEEL_DIAMETER * PI)
 #define DISTANCE_PER_TICK (CIRCUMFERENCE / TICKS_PER_REV)
-#define DISTANCE_CORRECTION_FACTOR 3.5
+#define DISTANCE_CORRECTION_FACTOR 3.85
 #define OFFSET_POWER_FOR_LEFT_MOTOR 1.28
 
 int distanceToTicks(float distance) {
@@ -27,31 +27,21 @@ void moveDistance(float distance, bool backward) {
     if (backward) {
         motor[motorLeft] = -(OFFSET_POWER_FOR_LEFT_MOTOR * BASE_POWER);
         motor[motorRight] = -BASE_POWER;
-          
-        
-          
     } else {
-        motor[motorLeft] = (OFFSET_POWER_FOR_LEFT_MOTOR  * BASE_POWER);
+        motor[motorLeft] = (OFFSET_POWER_FOR_LEFT_MOTOR * BASE_POWER);
         motor[motorRight] = BASE_POWER;
-          
-        
-          
     }
 
-    while (abs(SensorValue[LEFT_ENCODER]) < targetTicks && 
-           abs(SensorValue[RIGHT_ENCODER]) < targetTicks) {
+    while (abs(SensorValue[LEFT_ENCODER]) < targetTicks && abs(SensorValue[RIGHT_ENCODER]) < targetTicks) {
         wait1Msec(10);
     }
 
     motor[motorLeft] = 0;
     motor[motorRight] = 0;
-      
- 
-      
 }
 
 void turnDegrees(float degrees, bool right) {
-    float realDegrees = degrees * 2.5;
+    float realDegrees = degrees * 2.9;
     float turningCircumference = PI * WHEEL_BASE;
     float arcLength = (realDegrees / 180.0) * turningCircumference;
     int targetTicks = distanceToTicks(arcLength);
@@ -59,18 +49,18 @@ void turnDegrees(float degrees, bool right) {
     SensorValue[LEFT_ENCODER] = 0;
     SensorValue[RIGHT_ENCODER] = 0;
 
-    int reducedSpeed = 127 * 0.7;
+    int reducedSpeed = 127;  // You can tweak this to adjust turn speed
 
     if (right) {
-        motor[motorLeft] = reducedSpeed;
+        motor[motorLeft] = (OFFSET_POWER_FOR_LEFT_MOTOR*reducedSpeed);
         motor[motorRight] = -reducedSpeed;
     } else {
-        motor[motorLeft] = -reducedSpeed;
-        motor[motorRight] = reducedSpeed;
+        // Adjusted the power for the left motor to prevent moving backward
+        motor[motorLeft] = -(OFFSET_POWER_FOR_LEFT_MOTOR*reducedSpeed);  // Left motor should go backward
+        motor[motorRight] = (reducedSpeed);  // Right motor should go forward
     }
 
-    while (abs(SensorValue[LEFT_ENCODER]) < targetTicks && 
-           abs(SensorValue[RIGHT_ENCODER]) < targetTicks) {
+    while (abs(SensorValue[LEFT_ENCODER]) < targetTicks && abs(SensorValue[RIGHT_ENCODER]) < targetTicks) {
         wait1Msec(10);
     }
 
@@ -79,24 +69,14 @@ void turnDegrees(float degrees, bool right) {
 }
 
 void testMovementModule() {
-    // Forward movement test
-    writeDebugStreamLine("Testing forward movement (0.5m)");
-    moveDistance(0.5);
-    wait1Msec(2000);
-    
-    // Backward movement test
-    writeDebugStreamLine("Testing backward movement (0.3m)");
-    moveDistance(0.3, true);
-    wait1Msec(2000);
-    
     // Left turn test
     writeDebugStreamLine("Testing left turn (90 degrees)");
-    turnDegrees(90);
+    moveDistance(0.9,false);
     wait1Msec(2000);
     
     // Right turn test
     writeDebugStreamLine("Testing right turn (90 degrees)");
-    turnDegrees(90, true);
+    moveDistance(0.9, true);
     wait1Msec(2000);
     
     writeDebugStreamLine("Movement tests complete!");
