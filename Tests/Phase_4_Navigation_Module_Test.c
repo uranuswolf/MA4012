@@ -210,9 +210,9 @@ void readSensors() {
     status.isBoundary = (IR_values[0] || IR_values[1]  || 
                          IR_values[2] || IR_values[3] );
 
-    status.isFrontObstacle = (distances.distFC >= 5.0 && distances.distFC <= 40.0);
+    status.isFrontObstacle = (distances.distFC < 30.0);
 
-    status.isBackObstacle = (distances.distBC >= 5.0 && distances.distBC <= 40.0);
+    status.isBackObstacle = (distances.distBC < 30.0);
 
     // Only allow resetting isBallPicked during RETURN state
     if (currentState == DELIVER) {
@@ -224,8 +224,8 @@ void readSensors() {
 
 
 
-    status.isBall = ((distances.distFL >= 5.0 && distances.distFL <= 70.0) || 
-    (distances.distFR >= 5.0 && distances.distFR <= 70.0)) &&
+    status.isBall = ((distances.distFL <= 30) || 
+    (distances.distFR <=30)) &&
     (!status.isFrontObstacle);
 
 }
