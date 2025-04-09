@@ -499,9 +499,8 @@ void returnToBase() {
         }
 
         // Move backward continuously
-        motor[motorLeft] = -127;
-        motor[motorRight] = -127;
-        
+        moveDistance(1.8, true); // move back to base
+	    
         wait1Msec(50); // Slight delay to avoid overloading CPU
     }
 }
