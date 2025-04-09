@@ -225,16 +225,11 @@ void readSensors() {
              SensorValue[compass_Bit3] * 2 + 
              SensorValue[compass_LSB];
 
-   // Read sharp sensors with improved averaging
-   int rawFC = SensorValue[sharpFC];
-   int rawFR = SensorValue[sharpFR];
-   int rawFL = SensorValue[sharpFL];
-   int rawBC = SensorValue[sharpBC];
-
-   distances.distFC = getSharpDistance(sharpFC, rawFC); // Update the distances struct
-   distances.distFR = getSharpDistance(sharpFR, rawFR); // Update the distances struct
-   distances.distFL = getSharpDistance(sharpFL, rawFL); // Update the distances struct
-   distances.distBC = getSharpDistance(sharpBC, rawBC); // Update the distances struct
+    // Read sharp sensors
+    distances.distFC = getSharpDistance(sharpFC, SensorValue[sharpFC]);
+    distances.distFR = getSharpDistance(sharpFR, SensorValue[sharpFR]);
+    distances.distFL = getSharpDistance(sharpFL, SensorValue[sharpFL]);
+    distances.distBC = getSharpDistance(sharpBC, SensorValue[sharpBC]);
 
     // Update status flags
     status.isBoundary = (IR_values[0] || IR_values[1]  || 
