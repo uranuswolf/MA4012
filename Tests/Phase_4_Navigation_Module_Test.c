@@ -35,6 +35,7 @@ const float ROW_DISTANCE = 0.3;
 const float SPIRAL_BASE = 0.4;
 const float SPIRAL_INC = 0.15;
 const int HOME_BASE_HEADING = 180;
+const int MAX_HOME_DISTANCE = 2.1;
 
 const float CIRCUMFERENCE = WHEEL_DIAMETER * PI;
 const float DISTANCE_PER_TICK = CIRCUMFERENCE / TICKS_PER_REV;
@@ -499,7 +500,7 @@ void returnToBase() {
         }
 
         // Move backward continuously
-        moveDistance(1.8, true); // move back to base
+        moveDistance(MAX_HOME_DISTANCE, true); // move back to base
 	    
         wait1Msec(50); // Slight delay to avoid overloading CPU
     }
