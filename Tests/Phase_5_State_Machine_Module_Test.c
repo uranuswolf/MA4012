@@ -129,8 +129,7 @@ void deliverPhase() {
 
 void testStateMachine() {
     // Manual override for testing
-    SensorValue[limitswitchBall] = 1; // Start with no ball
-    
+    currentState = SEARCH;
     while(true) {
         writeDebugStreamLine("\nCurrent State: %d", currentState);
         
@@ -149,17 +148,6 @@ void testStateMachine() {
                 break;
         }
         
-        // Simulate ball pickup in collect phase
-        if(currentState == COLLECT) {
-            wait1Msec(1500);
-            SensorValue[limitswitchBall] = 0;
-        }
-        
-        // Simulate ball drop in deliver phase
-        if(currentState == DELIVER) {
-            wait1Msec(1500);
-            SensorValue[limitswitchBall] = 1;
-        }
         
         wait1Msec(1000);
     }
