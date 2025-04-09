@@ -20,6 +20,35 @@
 #pragma config(Motor,  port2,  motorRight,     tmotorVex393_MC29, openLoop)
 #pragma config(Motor,  port8,  FRONT_ROLLER,   tmotorServoContinuousRotation, openLoop)
 #pragma config(Motor,  port9,  BACK_ROLLER,    tmotorServoContinuousRotation, openLoop)
+
+//================================================================= Sensor MACROS ==================================================================
+#define sharpFC        in8
+#define sharpFL        in2
+#define sharpBC        in7
+#define sharpFR        in1
+#define IR_A           in6
+#define IR_B           in5
+#define IR_C           in4
+#define IR_D           in3
+
+#define limitswitchLB  dgtl6
+#define limitswitchRB  dgtl5
+#define limitswitchBall dgtl7
+
+#define RIGHT_ENCODER  dgtl1
+#define LEFT_ENCODER   dgtl3
+
+#define compass_LSB    dgtl8
+#define compass_Bit3   dgtl9
+#define compass_Bit2   dgtl10
+#define compass_MSB    dgtl11
+
+#define motorLeft      port3
+#define motorRight     port2
+#define FRONT_ROLLER   port8
+#define BACK_ROLLER    port9
+
+
 // ================================================================== Global Constants ==================================================================
 const float PI = 3.14159265359;
 const float WHEEL_DIAMETER = 0.06985;
@@ -35,7 +64,6 @@ const float ROW_DISTANCE = 0.3;
 const float SPIRAL_BASE = 0.4;
 const float SPIRAL_INC = 0.15;
 const int HOME_BASE_HEADING = 180;
-const int MAX_HOME_DISTANCE = 2.1;
 
 const float CIRCUMFERENCE = WHEEL_DIAMETER * PI;
 const float DISTANCE_PER_TICK = CIRCUMFERENCE / TICKS_PER_REV;
@@ -110,7 +138,7 @@ void handleObstacle(void);
 void handleBoundary(void);
 void returnToBase(void);
 float compass(int heading);
-void stopMotors(void);
+
 
 
 //============================================================ Helper Functions ==================================================================
@@ -123,13 +151,7 @@ void resetStatus() {
     status.isBallPicked = false;
     status.reachedBase = false;
     status.isDelivered = false;
-    status.isfirstBallDelivered = false;
     status.panRight = false;
-}
-
-void stopMotors(){
-    motor[motorLeft] = 0;
-    motor[motorRight] = 0;
 }
 
 void frontRollerControl(RollerMode mode) {
@@ -409,42 +431,22 @@ void handleBoundary() {
     bool backLeft   = (IR_values[3] == 0);
 
     // Combined special cases first
-    if (frontRight && backRight) { 
+    if (frontRight && backRight && limitSwitches[0] && limitSwitches[1]) { 
         turnDegrees(90,false);       // Turn left
-        moveDistance(0.3,false);           // Move forward 30cm
+        moveDistance(0.3);           // Move forward 30cm
     }
-    else if (frontLeft && backLeft) {
+    else if (frontLeft && backLeft && limitSwitches[0] && limitSwitches[1]) {
         turnDegrees(90, true);       // Turn Right
-        moveDistance(0.3,false);          // Move forward 30cm
+        moveDistance(0.3);          // Move forward 30cm
     }
     // Handle individual front triggers
-    else if (frontRight && frontLeft) {
+    else if ((frontRight || frontLeft) && limitSwitches[0] && limitSwitches[1]) {
         moveDistance(0.30, true);     // Reverse back 30cm
-        turnDegrees(180, false);
-        moveDistance(0.2,false);
+        turnDegrees(180, false);  // Turn around
     }
     // Handle individual rear triggers
-    else if (backRight && backLeft && (limitswitch[0] && limitswitch[1])) {
-        moveDistance(0.30,false);           // Move forward 30cm
-    }
-    else if (frontLeft || frontRight){
-    		moveDistance(0.3,true);
-    		if(frontLeft){
-    			turnDegrees(15,true);	
-    		}
-    		else if(frontRight){
-    			turnDegrees(15,false);	
-    		}
-    		moveDistance(0.10,false);
-    }
-        else if (backLeft || backRight && (limitswitch[0] && limitswitch[1])){
-    		moveDistance(0.3,false);
-    		if(backLeft){
-    			turnDegrees(15,true);	
-    		}
-    		else if(backRight){
-    			turnDegrees(15,false);	
-    		}
+    else if ((backRight || backLeft) && limitSwitches[0] && limitSwitches[1]) {
+        moveDistance(0.30);           // Move forward 30cm
     }
 }
 
@@ -520,8 +522,9 @@ void returnToBase() {
         }
 
         // Move backward continuously
-        moveDistance(MAX_HOME_DISTANCE, true); // move back to base
-	    
+        motor[motorLeft] = -127;
+        motor[motorRight] = -127;
+        
         wait1Msec(50); // Slight delay to avoid overloading CPU
     }
 }
