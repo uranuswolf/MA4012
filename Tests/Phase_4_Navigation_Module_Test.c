@@ -409,22 +409,42 @@ void handleBoundary() {
     bool backLeft   = (IR_values[3] == 0);
 
     // Combined special cases first
-    if (frontRight && backRight && limitSwitches[0] && limitSwitches[1]) { 
+    if (frontRight && backRight) { 
         turnDegrees(90,false);       // Turn left
         moveDistance(0.3);           // Move forward 30cm
     }
-    else if (frontLeft && backLeft && limitSwitches[0] && limitSwitches[1]) {
+    else if (frontLeft && backLeft) {
         turnDegrees(90, true);       // Turn Right
         moveDistance(0.3);          // Move forward 30cm
     }
     // Handle individual front triggers
-    else if ((frontRight || frontLeft) && limitSwitches[0] && limitSwitches[1]) {
+    else if (frontRight && frontLeft) {
         moveDistance(0.30, true);     // Reverse back 30cm
-        turnDegrees(180, false);  // Turn around
+        turnDegrees(180, false);
+        moveDistance(0.2,false);
     }
     // Handle individual rear triggers
-    else if ((backRight || backLeft) && limitSwitches[0] && limitSwitches[1]) {
+    else if (backRight && backLeft) {
         moveDistance(0.30);           // Move forward 30cm
+    }
+    else if (frontLeft || frontRight){
+    		moveDistance(0.3,true);
+    		if(frontLeft){
+    			turnDegrees(15,true);	
+    		}
+    		else if(frontRight){
+    			turnDegrees(15,false);	
+    		}
+    		moveDistance(0.10);
+    }
+        else if (backLeft || backRight){
+    		moveDistance(0.3);
+    		if(backLeft){
+    			turnDegrees(15,true);	
+    		}
+    		else if(backRight){
+    			turnDegrees(15,false);	
+    		}
     }
 }
 
