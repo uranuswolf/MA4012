@@ -411,11 +411,11 @@ void handleBoundary() {
     // Combined special cases first
     if (frontRight && backRight) { 
         turnDegrees(90,false);       // Turn left
-        moveDistance(0.3);           // Move forward 30cm
+        moveDistance(0.3,false);           // Move forward 30cm
     }
     else if (frontLeft && backLeft) {
         turnDegrees(90, true);       // Turn Right
-        moveDistance(0.3);          // Move forward 30cm
+        moveDistance(0.3,false);          // Move forward 30cm
     }
     // Handle individual front triggers
     else if (frontRight && frontLeft) {
@@ -425,7 +425,7 @@ void handleBoundary() {
     }
     // Handle individual rear triggers
     else if (backRight && backLeft && (limitswitch[0] && limitswitch[1])) {
-        moveDistance(0.30);           // Move forward 30cm
+        moveDistance(0.30,false);           // Move forward 30cm
     }
     else if (frontLeft || frontRight){
     		moveDistance(0.3,true);
@@ -435,10 +435,10 @@ void handleBoundary() {
     		else if(frontRight){
     			turnDegrees(15,false);	
     		}
-    		moveDistance(0.10);
+    		moveDistance(0.10,false);
     }
         else if (backLeft || backRight && (limitswitch[0] && limitswitch[1])){
-    		moveDistance(0.3);
+    		moveDistance(0.3,false);
     		if(backLeft){
     			turnDegrees(15,true);	
     		}
