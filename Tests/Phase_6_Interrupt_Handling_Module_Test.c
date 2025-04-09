@@ -10,6 +10,8 @@
 #pragma config(Sensor, dgtl5,  limitswitchRB,  sensorDigitalIn)
 #pragma config(Motor,  port3,  motorLeft,      tmotorVex393_MC29, openLoop, reversed)
 #pragma config(Motor,  port2,  motorRight,     tmotorVex393_MC29, openLoop)
+#pragma config(Sensor, dgtl1,  RIGHT_ENCODER,  sensorQuadEncoder) 
+#pragma config(Sensor, dgtl3,  LEFT_ENCODER,   sensorQuadEncoder) 
 
 // Sensor MACROS
 #define sharpFC        in8
@@ -23,9 +25,17 @@
 #define limitswitchLB  dgtl6
 #define limitswitchRB  dgtl5
 
-// Global Constants
+const float PI = 3.14159265359;
+const float WHEEL_DIAMETER = 0.06985;
+const float WHEEL_BASE = 0.188;
+const int TICKS_PER_REV = 90;
 const int BASE_POWER = 30;
+const float DISTANCE_CORRECTION_FACTOR = 3.85;
 const float OFFSET_POWER_FOR_LEFT_MOTOR = 1.28;
+
+
+const float CIRCUMFERENCE = WHEEL_DIAMETER * PI;
+const float DISTANCE_PER_TICK = CIRCUMFERENCE / TICKS_PER_REV;
 
 // Sensor Data Structure
 typedef struct {
@@ -156,11 +166,11 @@ void handleBoundary() {
     // Combined special cases first
     if (frontRight && backRight && limitSwitches[0] && limitSwitches[1]) { 
         turnDegrees(90,false);       // Turn left
-        moveDistance(0.3);           // Move forward 30cm
+        moveDistance(0.3,false);           // Move forward 30cm
     }
     else if (frontLeft && backLeft && limitSwitches[0] && limitSwitches[1]) {
         turnDegrees(90, true);       // Turn Right
-        moveDistance(0.3);          // Move forward 30cm
+        moveDistance(0.3,false);          // Move forward 30cm
     }
     // Handle individual front triggers
     else if ((frontRight || frontLeft) && limitSwitches[0] && limitSwitches[1]) {
@@ -169,7 +179,7 @@ void handleBoundary() {
     }
     // Handle individual rear triggers
     else if ((backRight || backLeft) && limitSwitches[0] && limitSwitches[1]) {
-        moveDistance(0.30);           // Move forward 30cm
+        moveDistance(0.30,false);           // Move forward 30cm
     }
 }
 
