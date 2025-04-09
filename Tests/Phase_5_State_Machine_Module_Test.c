@@ -42,10 +42,10 @@ StatusFlags status;
 void frontRollerControl(RollerMode mode) {
     switch(mode){
         case INTAKE:
-            motor[FRONT_ROLLER] = -ROLLER_SPEED; // Intake speed
+            motor[FRONT_ROLLER] = ROLLER_SPEED; // Intake speed
             break;
         case OUTPUT:
-            motor[FRONT_ROLLER] = ROLLER_SPEED; // Output speed
+            motor[FRONT_ROLLER] = -ROLLER_SPEED; // Output speed
             break;
         case STOP:
             motor[FRONT_ROLLER] = 0; // Stop roller
