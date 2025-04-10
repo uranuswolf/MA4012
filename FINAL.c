@@ -611,21 +611,22 @@ void searchingAlgo() {
 }
 
 
-void moveTowardsBall() {
+void MoveTowardsBall() {
 
-        if (distances.distFL < distances.distFR) {
-            // Ball is more to the left
-            moveDistance(distances.distFL - 20); // Adjust movement
-            wait1Msec(500);
-            turnDegrees(30);
-        }
-        // If the ball is detected by the right sensor
-        else if (distances.distFR < distances.distFL) {
-            // Ball is more to the right
-            moveDistance(distances.distFR - 20); // Adjust movement
-            wait1Msec(500);
-            turnDegrees(30, true);
-}
+    if (distance.distFL < 20.0) {
+    	turnDegrees(30, false);
+    	motor[motorL] = 30;
+        motor[motorR] = 30;
+        
+  	} if (distance.distFR < 20.0) {
+    	turnDegrees(30, true);
+    	motor[motorL] = 30;
+        motor[motorR] = 30;
+        
+    } else {
+        motor[motorL] = 30;
+        motor[motorR] = 30;
+    }
 }
 
 
