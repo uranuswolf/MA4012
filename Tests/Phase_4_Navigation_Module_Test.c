@@ -61,8 +61,6 @@ const int ROLLER_SPEED = 127;
 const float PAN_ANGLE = 20;
 const float INITIAL_DISTANCE = 1.2;
 const float ROW_DISTANCE = 0.3;
-const float SPIRAL_BASE = 0.4;
-const float SPIRAL_INC = 0.15; 	
 
 const float CIRCUMFERENCE = WHEEL_DIAMETER * PI;
 const float DISTANCE_PER_TICK = CIRCUMFERENCE / TICKS_PER_REV;
@@ -94,12 +92,6 @@ typedef enum RollerMode {
     STOP 
 } RollerMode;
 
-typedef enum FlapMode {
-    PUSH, 
-    OPEN,
-    CLOSE 
-} FlapMode;
-
 typedef enum RobotState {
     SEARCH,
     COLLECT,
@@ -125,7 +117,6 @@ bool IR_D_value;
 
 //============================================================ Function Prototypes ==================================================================
 void frontRollerControl(RollerMode mode);
-void flapperControl(FlapMode mode);
 float getSharpDistance(tSensors sensor, int analogValue);
 void readSensors(void);
 int distanceToTicks(float distance);
@@ -142,6 +133,7 @@ void handleObstacle(void);
 void handleBoundary(void);
 void returnToBase(void);
 float compass(int heading);
+void randomsearch(void);
 
 
 
@@ -156,7 +148,6 @@ void resetStatus() {
     status.reachedBase = false;
     status.isDelivered = false;
     status.panRight = false;
-    status.ballWithinSight = false;
 }
 
 void frontRollerControl(RollerMode mode) {
@@ -169,26 +160,6 @@ void frontRollerControl(RollerMode mode) {
             break;
         case STOP:
             motor[FRONT_ROLLER] = 0;
-            break;
-    }
-}
-
-void flapperControl(FlapMode mode) {
-    switch (mode) {
-        case PUSH:
-            motor[BACK_ROLLER] = -50;
-            wait1Msec(800);
-            motor[BACK_ROLLER] = 0;
-            break;
-        case OPEN:
-            motor[BACK_ROLLER] = 50;
-            wait1Msec(1500);
-            motor[BACK_ROLLER] = 0;
-            break;
-        case CLOSE:
-            motor[BACK_ROLLER] = -50;
-            wait1Msec(300);
-            motor[BACK_ROLLER] = 0;
             break;
     }
 }
@@ -241,9 +212,9 @@ status.isBoundary = (IR_A_value || IR_B_value ||IR_C_value || IR_D_value);
 status.isFrontObstacle = (distances.distFC < 30.0);
 status.isBackObstacle = (distances.distBC < 30.0);
 
-status.isBall = ((distances.distFL <= 50) || 
-(distances.distFR <=50)) &&
-(!status.isFrontObstacle);
+status.isBall = ((10 <= distances.distFL && distances.distFL <= 50) || 
+                 (10 <= distances.distFR && distances.distFR <= 50)) &&
+                (!status.isFrontObstacle);
 
 // Only allow resetting isBallPicked during DELIVER state
 if (currentState == DELIVER) {
@@ -342,6 +313,16 @@ float compass(int heading){
 	return -1;
 }
 
+void randomsearch(){
+    int angle = 50 + rand()%(360-50+1);
+    int direction= rand() %2;
+    while(!status.isBoundary){
+      turnDegrees(angle,direction);
+      motor[motorLeft]=60;
+      motor[motorRight]=60;
+    }
+}
+
 
 void searchingAlgo() {
 
@@ -374,55 +355,33 @@ void searchingAlgo() {
         wait1Msec(1000);
     }
     else {
-        // Phase 2: Sector search only
-      
-        float spiralRadius = SPIRAL_BASE + (searchIteration * SPIRAL_INC);
-
-        // Sector search pattern (only)
-        for (int i = 0; i < 3; i++) {
-            moveDistance(spiralRadius * 0.3);
-            turnDegrees(45 + (rand() % 30), rand() % 2);
-            searchIteration++;  // Spiral expansion retained
-        }
-
-        // Reset after full cycle to avoid infinite spiral growth
-        if (searchIteration > 5) {
-            searchIteration = 1;
-            if (rand() % 4 == 0) {
-                turnDegrees(360, rand() % 2);  // Optional 360° scan
-            }
+        while(true){
+            randomsearch();
         }
     }
 }
+
 
 
 void moveTowardsBall() {
-    float targetDistance;
-    bool turnRight;
 
     if (distances.distFL < distances.distFR) {
-        targetDistance = distances.distFL;
-        turnRight = false;
-    } else {
-        targetDistance = distances.distFR;
-        turnRight = true;
+        // Ball is more to the left
+        turnDegrees(20,false);
+        wait1Msec(500);
+        motor[motorLeft] =30;
+        motor[motorRight] = 30;
     }
-
-//    float moveDist = (targetDistance * 0.01) - 0.20; // Convert cm to m and add safety buffer
-
-    clearTimer(T1);
-    while (time1[T1]<2400 && status.isBall){
-        motor[motorLeft]= 10;
-        motor[motorRight]= 10;
-        wait1Msec(50);
-        status.ballWithinSight = true; // Ball is within sight
-        }
-
-    if (status.ballWithinSight) {
-        turnDegrees(25, true);
-        moveDistance(0.3, false); // Final forward approach to swoop the ball in
+    else {
+        // Ball is more to the right
+        turnDegrees(20,true);
+        wait1Msec(500);
+        motor[motorLeft] =30;
+        motor[motorRight] = 30;
     }
+   
 }
+
 // Boundary Handling Function
 void handleBoundary() {
     // Stop motors immediately 
@@ -502,7 +461,7 @@ void handleObstacle() {
 
 
 void returnToBase() {
-    //HOME_BASE_HEADING = 225;
+    //HOME_BASE_HEADING = 180;
     while (!compass(heading) == 180) {
         int reducedSpeed = 60; // Adjust speed as needed
         motor[motorLeft] = (OFFSET_POWER_FOR_LEFT_MOTOR*reducedSpeed);
@@ -545,28 +504,31 @@ task returnToBaseTask(){
     }
 
 task roller_indexer() {
+        //run this conce
+        motor[BACK_ROLLER] = 50;
+        wait1Msec(1000);
+        motor[BACK_ROLLER] = 0;
+
         while (true) {
-         //indexer up
-         motor[BACK_ROLLER] = 50;
-         motor[FRONT_ROLLER] = 127;
-         wait1Msec(1000);
-         motor[BACK_ROLLER] = 0;
-       
          //secure ball
          waitUntil(status.isBallPicked);
-         motor[BACK_ROLLER] = -50;
+         motor[BACK_ROLLER] = -50; //close the flapper 
          motor[FRONT_ROLLER] = -127;
          wait1Msec(300);
          motor[BACK_ROLLER] = 0;
-         wait1Msec(2000);
-         motor[FRONT_ROLLER] = 0;
        
          //dispense ball
          waitUntil(status.reachedBase);
+         motor[FRONT_ROLLER] = 0;
          motor[BACK_ROLLER] = -50;
          wait1Msec(800);
+         motor[BACK_ROLLER] = 50;
+         wait1Msec(1000);
+         motor[BACK_ROLLER] = 0;
+        
+        wait1Msec(100);
         }
-       }
+    }
 
 //============================================================ Test Task ==================================================================
 // This task is for debugging purposes only
@@ -592,7 +554,7 @@ task testSensorModuleTask() {
         SensorValue[IR_A], SensorValue[IR_B], SensorValue[IR_C], SensorValue[IR_D]);
     
             
-            wait1Msec(50); // Reduced delay for more frequent updates
+            wait1Msec(1000); // Reduced delay for more frequent updates
         }
     }
     
@@ -622,25 +584,28 @@ void searchPhase() {
         }
 
         if(status.isBall) {
-            currentState = COLLECT;
             stopTask(searchingBallTask); // Stop searching when ball is found
+            motor[motorLeft] =0;
+            motor[motorRight] =0;
+            wait1Msec(100); // Wait for a moment to stabilize
+            currentState = COLLECT;
             break;
         }
         
-        if(status.isBallPicked) {  // Bypass collectPhase and jump straight to RETURN if ball is picked
-            currentState = RETURN;
+        if(status.isBallPicked) {  // Bypass collectPhase and jump straight to RETURN if ball is picked up by luck
             stopTask(searchingBallTask); // Stop searching if ball is picked
+            currentState = RETURN;
             break;
         }
 
-        wait1Msec(100); // Wait to avoid tight loop
+        wait1Msec(50); 
     }
 }
 
 
 void collectPhase() {
-    flapperControl(OPEN); // Open the flapper to pick up the ball
     startTask(moveTowardsBallTask);
+    clearTimer(T1);  // Reset timer T1 at the beginning
     
     while(currentState == COLLECT) {
         // Step 1: Handle boundary first
@@ -648,8 +613,8 @@ void collectPhase() {
             stopTask(moveTowardsBallTask); 
             handleBoundary();
             wait1Msec(500); 
-            startTask(moveTowardsBallTask); // Restart searching after handling obstacle
-            continue;       // restart loop
+            currentState = SEARCH; // Go back to search state
+            break;   
         }
 
         // If an obstacle is detected, handle it
@@ -657,24 +622,24 @@ void collectPhase() {
             stopTask(moveTowardsBallTask); 
             handleObstacle(); // Stop search and handle the obstacle
             wait1Msec(500); 
-            startTask(moveTowardsBallTask); // Restart searching after handling obstacle
-            continue;       // restart loop
+            currentState = SEARCH; // Go back to search state
+            break;      
         }
 
-        // if the ball is no longer in sight 
-        if(!status.isBall && !status.ballWithinSight) {
+        if (status.isBallPicked){
+            clearTimer(T1);  // Reset timer T1 
+            stopTask(moveTowardsBallTask);
+            currentState = RETURN;
+            break;
+        }
+
+         // Timeout check - if more than 7 seconds without any reset conditions
+         if (time1[T1] > 7000) {
             stopTask(moveTowardsBallTask);
             currentState = SEARCH;
             break;
         }
-        if (status.isBallPicked){
-            stopTask(moveTowardsBallTask);
-            frontRollerControl(STOP); // Stop the front roller
-            flapperControl(CLOSE);// Close the flapper
-            currentState = RETURN;
-            break;
-        }
-        wait1Msec(100);
+        wait1Msec(50);
     }
 }
 
@@ -704,48 +669,18 @@ void returnPhase() {
             currentState = DELIVER;
             break;  
         }
+        wait1Msec(50);
 }
 }
 
 void deliverPhase() {
-    // Activate flapper to deliver ball
-    flapperControl(PUSH);
-    wait1Msec(1000); 
+   while(true){
 
-    // Open the flapper 
-    flapperControl(OPEN);
-
-    if (!status.isBallPicked) {
-        status.isDelivered = true; // Ball is delivered
-        currentState = SEARCH;     // Move to search state
-        if (!status.isfirstBallDelivered) {
-            status.isfirstBallDelivered = true; // First ball delivered
-        }
-        return;
-    }
-
-    else{// if the ball is still not released, keep pushing it out
-    while (status.isBallPicked) {
-        // If the ball is still picked, push the ball out again
-        flapperControl(PUSH);
-        wait1Msec(1000); 
-
-        // Open the flapper again 
-        flapperControl(OPEN);
-
-        // Give some time for the ball to settle after opening the flapper
-        wait1Msec(500); 
-        
-        // If the ball is no longer picked, mark it as delivered
         if (!status.isBallPicked) {
-            status.isDelivered = true; // Ball is delivered
-            currentState = SEARCH;     // Move to search state
-            if (!status.isfirstBallDelivered) {
-                status.isfirstBallDelivered = true; // First ball delivered
-            }
-            break; // Exit loop once ball is delivered
+            currentState = SEARCH; // Go back to search state
+            break;
         }
-        }
+        wait1Msec(50);
     }
 }
 
@@ -754,7 +689,11 @@ task main() {
     // Initialize all status flags to false
     resetStatus();
 
-    startTask(roller_indexer); // Start the roller indexer task
+    //Start the front roller to intake the ball 
+    frontRollerControl(INTAKE);
+
+    // Start the roller indexer task
+    startTask(roller_indexer); 
 
     // Initialize sensor reading task
     startTask(readSensorsTask);
