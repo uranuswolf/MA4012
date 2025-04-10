@@ -58,7 +58,7 @@ const int BASE_POWER = 30;
 const float DISTANCE_CORRECTION_FACTOR = 3.85;
 const float OFFSET_POWER_FOR_LEFT_MOTOR = 1.28;
 const int ROLLER_SPEED = 127;
-const float PAN_ANGLE = 20.0;
+const float PAN_ANGLE = 20;
 const float INITIAL_DISTANCE = 1.2;
 const float ROW_DISTANCE = 0.3;
 const float SPIRAL_BASE = 0.4;
@@ -86,6 +86,7 @@ typedef struct {
     bool isDelivered;
     bool isfirstBallDelivered; // Flag to check if the first ball is delivered
     bool panRight; // Flag to check if should pan left or right at the start of the search
+    bool ballWithinSight; // Flag to check if the ball is within sight of the robot
 } StatusFlags;
 //============================================================ Enum definition ==================================================================
 typedef enum RollerMode {
@@ -156,6 +157,7 @@ void resetStatus() {
     status.reachedBase = false;
     status.isDelivered = false;
     status.panRight = false;
+    status.ballWithinSight = false;
 }
 
 void frontRollerControl(RollerMode mode) {
@@ -291,7 +293,7 @@ void moveDistance(float distance, bool backward) {
 }
 
 void turnDegrees(float degrees, bool right) {
-    float realDegrees = degrees * 2.9;
+    float realDegrees = degrees * 3.1;
     float turningCircumference = PI * WHEEL_BASE;
     float arcLength = (realDegrees / 180.0) * turningCircumference;
     int targetTicks = distanceToTicks(arcLength);
@@ -409,11 +411,18 @@ void moveTowardsBall() {
 
     float moveDist = (targetDistance * 0.01) - 0.20; // Convert cm to m and add safety buffer
 
-    if (moveDist < 0.1) moveDist = 0.1; // Safety minimum distance
-
-    moveDistance(moveDist, false);
-    turnDegrees(25, turnRight);
-    moveDistance(0.3, false); // Final forward approach to swoop the ball in
+    while (true){
+        moveDistance(moveDist, false);
+        if (distances.distFL<=moveDist || distances.distFR<=moveDist){
+            status.ballWithinSight = true;
+            break;
+        }
+        break;
+    }
+    if (status.ballWithinSight) {
+        turnDegrees(25, turnRight);
+        moveDistance(0.3, false); // Final forward approach to swoop the ball in
+    }
 }
 
 // Boundary Handling Function
@@ -495,33 +504,19 @@ void handleObstacle() {
 
 
 void returnToBase() {
-    //HOME_BASE_HEADING = 180;
-    while (true) {
-        int compassHeading = compass(heading);
-        int degreeDiff = compassHeading - HOME_BASE_HEADING;
-
-        // Basic reorientation: if off-course, adjust heading before moving
-        if (abs(degreeDiff) > 5) { // You can tune this threshold
-            motor[motorLeft] = 0;
-            motor[motorRight] = 0;
-            wait1Msec(100);
-
-            if (degreeDiff < 0) {
-                turnDegrees(abs(degreeDiff), true);  // Turn left
-            } else {
-                turnDegrees(abs(degreeDiff), false); // Turn right
-            }
-
-            wait1Msec(100);
+    //HOME_BASE_HEADING = 225;
+    while (!compass(heading) == 180) {
+        int reducedSpeed = 60; // Adjust speed as needed
+        motor[motorLeft] = (OFFSET_POWER_FOR_LEFT_MOTOR*reducedSpeed);
+        motor[motorRight] = -reducedSpeed;
+        wait1Msec(500);
+             break;
         }
 
         // Move backward continuously
         motor[motorLeft] = -127;
         motor[motorRight] = -127;
-        
-        wait1Msec(50); // Slight delay to avoid overloading CPU
     }
-}
 
 
 
@@ -551,7 +546,30 @@ task returnToBaseTask(){
         returnToBase();
     }
 
-    
+task roller_indexer() {
+        while (true) {
+         //indexer up
+         motor[BACK_ROLLER] = 50;
+         motor[FRONT_ROLLER] = 127;
+         wait1Msec(1000);
+         motor[BACK_ROLLER] = 0;
+       
+         //secure ball
+         waitUntil(status.isBallPicked);
+         motor[BACK_ROLLER] = -50;
+         motor[FRONT_ROLLER] = -127;
+         wait1Msec(300);
+         motor[BACK_ROLLER] = 0;
+         wait1Msec(2000);
+         motor[FRONT_ROLLER] = 0;
+       
+         //dispense ball
+         waitUntil(status.reachedBase);
+         motor[BACK_ROLLER] = -50;
+         wait1Msec(800);
+        }
+       }
+
 //============================================================ Test Task ==================================================================
 // This task is for debugging purposes only
 
@@ -646,7 +664,7 @@ void collectPhase() {
         }
 
         // if the ball is no longer in sight 
-        if(!status.isBall) {
+        if(!status.isBall && !status.ballWithinSight) {
             stopTask(moveTowardsBallTask);
             currentState = SEARCH;
             break;
@@ -738,11 +756,7 @@ task main() {
     // Initialize all status flags to false
     resetStatus();
 
-    // Start front roller
-    frontRollerControl(INTAKE);
-
-    // Open the flapper to pick up the ball
-    flapperControl(OPEN);
+    startTask(roller_indexer); // Start the roller indexer task
 
     // Initialize sensor reading task
     startTask(readSensorsTask);
