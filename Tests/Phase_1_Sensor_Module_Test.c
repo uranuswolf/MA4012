@@ -104,23 +104,18 @@ void readSensors() {
     status.panRight = (limitSwitches[0] == 0) ? true : false; // default to true
     panRightInitialized = true;
 }
-   
+
     // Read compass
     heading = SensorValue[compass_MSB] * 8 + 
              SensorValue[compass_Bit2] * 4 + 
              SensorValue[compass_Bit3] * 2 + 
              SensorValue[compass_LSB];
 
-   // Read sharp sensors with improved averaging
-   int rawFC = SensorValue[sharpFC];
-   int rawFR = SensorValue[sharpFR];
-   int rawFL = SensorValue[sharpFL];
-   int rawBC = SensorValue[sharpBC];
-
-   distances.distFC = getSharpDistance(sharpFC, rawFC); // Update the distances struct
-   distances.distFR = getSharpDistance(sharpFR, rawFR); // Update the distances struct
-   distances.distFL = getSharpDistance(sharpFL, rawFL); // Update the distances struct
-   distances.distBC = getSharpDistance(sharpBC, rawBC); // Update the distances struct
+    // Read sharp sensors
+    distances.distFC = getSharpDistance(sharpFC, SensorValue[sharpFC]);
+    distances.distFR = getSharpDistance(sharpFR, SensorValue[sharpFR]);
+    distances.distFL = getSharpDistance(sharpFL, SensorValue[sharpFL]);
+    distances.distBC = getSharpDistance(sharpBC, SensorValue[sharpBC]);
 
     // Update status flags
     status.isBoundary = (IR_values[0] || IR_values[1]  || 
@@ -130,19 +125,24 @@ void readSensors() {
 
     status.isBackObstacle = (distances.distBC < 30.0);
 
-    // Only allow resetting isBallPicked during RETURN state
+    status.isBall = ((distances.distFL <= 50) || 
+    (distances.distFR <=50)) &&
+    (!status.isFrontObstacle);
+
+    // Only allow resetting isBallPicked during DELIVER state
     if (currentState == DELIVER) {
     status.isBallPicked = (limitSwitches[2] == 0); 
      } else {
-    // Once it's true, don't let it go false until RETURN state
+    // Once it's true, don't let it go false until DELIVER state
     status.isBallPicked = status.isBallPicked || (limitSwitches[2] == 0);
-}
+    }
 
-
-
-    status.isBall = ((distances.distFL <= 30) || 
-    (distances.distFR <=30)) &&
-    (!status.isFrontObstacle);
+    if (currentState == RETURN && !status.reachedBase) {
+        if ((limitSwitches[0] == 0 || limitSwitches[1] == 0) && // 0 means limit switch is pressed
+            (IR_values[2] == 0 && IR_values[3] == 0)) {
+            status.reachedBase = true;
+        }
+    }
 
 }
 

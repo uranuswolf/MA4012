@@ -112,11 +112,15 @@ DistanceSensors distances;
 StatusFlags status;
 RobotState currentState = SEARCH;
 
-int IR_values[4];
+
 int limitSwitches[3];
 int heading;
 bool panRightInitialized = false;
 int searchIteration = 0;
+bool IR_A_value;
+bool IR_B_value;
+bool IR_C_value;
+bool IR_D_value;
 
 
 //============================================================ Function Prototypes ==================================================================
@@ -203,62 +207,61 @@ float getSharpDistance(tSensors sensor, int analogValue) {
 }
 
 void readSensors() {
-    // Read IR sensors
-    tSensors IR_ports[4] = {IR_A, IR_B, IR_C, IR_D};
-    for (int i = 0; i < 4; i++) {
-        IR_values[i] = SensorValue[IR_ports[i]] < 2700 ? 1 : 0;
-    }
+    
+IR_A_value = SensorValue[IR_A] < 2700 ? true : false;
+IR_B_value = SensorValue[IR_B] < 2700 ? true : false;
+IR_C_value = SensorValue[IR_C] < 2700 ? true : false;
+IR_D_value = SensorValue[IR_D] < 2700 ? true : false;
 
-    // Read limit switches
-    limitSwitches[0] = SensorValue[limitswitchLB];
-    limitSwitches[1] = SensorValue[limitswitchRB];
-    limitSwitches[2] = SensorValue[limitswitchBall];
+// Read limit switches
+limitSwitches[0] = SensorValue[limitswitchLB];
+limitSwitches[1] = SensorValue[limitswitchRB];
+limitSwitches[2] = SensorValue[limitswitchBall];
 
-   if (!panRightInitialized) {
+if (!panRightInitialized) {
     status.panRight = (limitSwitches[0] == 0) ? true : false; // default to true
     panRightInitialized = true;
 }
 
-    // Read compass
-    heading = SensorValue[compass_MSB] * 8 + 
-             SensorValue[compass_Bit2] * 4 + 
-             SensorValue[compass_Bit3] * 2 + 
-             SensorValue[compass_LSB];
+ // Read compass
+ heading = SensorValue[compass_MSB] * 8 + 
+ SensorValue[compass_Bit2] * 4 + 
+ SensorValue[compass_Bit3] * 2 + 
+ SensorValue[compass_LSB];
 
-    // Read sharp sensors
-    distances.distFC = getSharpDistance(sharpFC, SensorValue[sharpFC]);
-    distances.distFR = getSharpDistance(sharpFR, SensorValue[sharpFR]);
-    distances.distFL = getSharpDistance(sharpFL, SensorValue[sharpFL]);
-    distances.distBC = getSharpDistance(sharpBC, SensorValue[sharpBC]);
+// Read sharp sensors
+distances.distFC = getSharpDistance(sharpFC, SensorValue[sharpFC]);
+distances.distFR = getSharpDistance(sharpFR, SensorValue[sharpFR]);
+distances.distFL = getSharpDistance(sharpFL, SensorValue[sharpFL]);
+distances.distBC = getSharpDistance(sharpBC, SensorValue[sharpBC]);
 
-    // Update status flags
-    status.isBoundary = (IR_values[0] || IR_values[1]  || 
-                         IR_values[2] || IR_values[3] );
+// Update status flags
+status.isBoundary = (IR_A_value || IR_B_value ||IR_C_value || IR_D_value);
+status.isFrontObstacle = (distances.distFC < 30.0);
+status.isBackObstacle = (distances.distBC < 30.0);
 
-    status.isFrontObstacle = (distances.distFC < 30.0);
+status.isBall = ((distances.distFL <= 50) || 
+(distances.distFR <=50)) &&
+(!status.isFrontObstacle);
 
-    status.isBackObstacle = (distances.distBC < 30.0);
-
-    status.isBall = ((distances.distFL <= 50) || 
-    (distances.distFR <=50)) &&
-    (!status.isFrontObstacle);
-
-    // Only allow resetting isBallPicked during DELIVER state
-    if (currentState == DELIVER) {
-    status.isBallPicked = (limitSwitches[2] == 0); 
-     } else {
-    // Once it's true, don't let it go false until DELIVER state
-    status.isBallPicked = status.isBallPicked || (limitSwitches[2] == 0);
-    }
-
-    if (currentState == RETURN && !status.reachedBase) {
-        if ((limitSwitches[0] == 0 || limitSwitches[1] == 0) && // 0 means limit switch is pressed
-            (IR_values[2] == 0 && IR_values[3] == 0)) {
-            status.reachedBase = true;
-        }
-    }
-
+// Only allow resetting isBallPicked during DELIVER state
+if (currentState == DELIVER) {
+status.isBallPicked = (limitSwitches[2] == 0); 
+ } else {
+// Once it's true, don't let it go false until DELIVER state
+status.isBallPicked = status.isBallPicked || (limitSwitches[2] == 0);
 }
+
+if (currentState == RETURN && !status.reachedBase) {
+    if ((limitSwitches[0] == 0 || limitSwitches[1] == 0) && // 0 means limit switch is pressed
+        (IR_C_value == true && IR_D_value == true)) {
+        status.reachedBase = true;
+    }
+}
+}
+
+
+
 
 int distanceToTicks(float distance) {
     return (int)(distance /DISTANCE_PER_TICK);
@@ -418,32 +421,27 @@ void handleBoundary() {
     // Stop motors immediately 
     motor[motorLeft] = 0;
     motor[motorRight] = 0;
-
-    // Read sensor states (0 = boundary detected)
-    bool frontRight = (IR_values[0] == 0);
-    bool frontLeft  = (IR_values[1] == 0);
-    bool backRight  = (IR_values[2] == 0);
-    bool backLeft   = (IR_values[3] == 0);
+    
 
     // Combined special cases first
-    if (frontRight && backRight && limitSwitches[0] && limitSwitches[1]) { 
+    if (IR_A_value && IR_C_value  && limitSwitches[0] && limitSwitches[1]) { 
+    	  writeDebugStreamLine("boundary on right! turn left");
         turnDegrees(90,false);       // Turn left
-        moveDistance(0.3);           // Move forward 30cm
-    }
-    else if (frontLeft && backLeft && limitSwitches[0] && limitSwitches[1]) {
-        turnDegrees(90, true);       // Turn Right
-        moveDistance(0.3);          // Move forward 30cm
-    }
-    // Handle individual front triggers
-    else if ((frontRight || frontLeft) && limitSwitches[0] && limitSwitches[1]) {
-        moveDistance(0.30, true);     // Reverse back 30cm
-        turnDegrees(180, false);  // Turn around
-    }
-    // Handle individual rear triggers
-    else if ((backRight || backLeft) && limitSwitches[0] && limitSwitches[1]) {
-        moveDistance(0.30);           // Move forward 30cm
+        moveDistance(0.3,false);           // Move forward 30cm
+    } else if (IR_B_value&& IR_D_value && limitSwitches[0] && limitSwitches[1]) {
+        writeDebugStreamLine("boundary on left! turn right");
+        turnDegrees(90,true);       // Turn right
+        moveDistance(0.3,false);           // Move forward 30cm
+    } else if ((IR_A_value || IR_B_value) && limitSwitches[0] && limitSwitches[1]){
+        writeDebugStreamLine("boundary in front! turn back");
+        moveDistance(0.2,true);    // Move back 10cm
+        turnDegrees(180,true);     //Reverse
+    } else if ((IR_C_value || IR_D_value) && limitSwitches[0] && limitSwitches[1]){
+        writeDebugStreamLine("boundary in back! move front");
+        moveDistance(0.3,false); // Move forward 30cm
     }
 }
+
 
 // Helper function to decide turn direction based on side distances
 void decideTurn(float leftDist, float rightDist) {
@@ -464,7 +462,7 @@ void handleObstacle() {
     
     // Handle front obstacles if moving forward
     if (status.isFrontObstacle) {
-        if (distances.distFC <= 0.2) {
+        if (distances.distFC <= 15) {
             moveDistance(0.2, true);  // Reverse 20cm away from the obstacle
         }
         
@@ -480,7 +478,7 @@ void handleObstacle() {
     
     // Handle back obstacles if reversing
     else if (status.isBackObstacle && motor[motorLeft] < 0 && motor[motorRight] < 0) {
-        if (distances.distBC <= 0.2) {
+        if (distances.distBC <= 15) {
             moveDistance(0.2,false);  // Move forward 20cm
         }
 
@@ -494,6 +492,7 @@ void handleObstacle() {
         return;
     } 
 }
+
 
 void returnToBase() {
     //HOME_BASE_HEADING = 180;
@@ -551,6 +550,8 @@ task moveTowardsBallTask() {
 task returnToBaseTask(){
         returnToBase();
     }
+
+    
 //============================================================ Test Task ==================================================================
 // This task is for debugging purposes only
 
@@ -558,8 +559,6 @@ task testSensorModuleTask() {
      while(true) {
         // Display all sensor readings
         writeDebugStreamLine("\n--- SENSOR READINGS ---");
-        writeDebugStreamLine("IR Sensors: FR=%d FL=%d BR=%d BL=%d", 
-                               IR_values[0], IR_values[1], IR_values[2], IR_values[3]);
         writeDebugStreamLine("Limit Switches: LB=%d RB=%d Ball=%d",
                                limitSwitches[0], limitSwitches[1], limitSwitches[2]);
         writeDebugStreamLine("Compass Heading: %d", heading);

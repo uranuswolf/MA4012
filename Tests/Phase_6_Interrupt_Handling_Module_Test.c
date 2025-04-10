@@ -55,8 +55,11 @@ typedef struct {
 // Global Variables
 DistanceSensors distances;
 StatusFlags status;
-int IR_values[4];
 int limitSwitches[2];
+bool IR_A_value;
+bool IR_B_value;
+bool IR_C_value;
+bool IR_D_value;
 
 // Helper Functions
 float getSharpDistance(tSensors sensor, int analogValue) {
@@ -73,12 +76,12 @@ float getSharpDistance(tSensors sensor, int analogValue) {
 }
 
 void readSensors() {
-    // Read IR sensors
-    tSensors IR_ports[4] = {IR_A, IR_B, IR_C, IR_D};
-    for (int i = 0; i < 4; i++) {
-        IR_values[i] = SensorValue[IR_ports[i]] < 2700 ? 1 : 0;
-    }
-
+    
+        IR_A_value = SensorValue[IR_A] < 2700 ? true : false;
+        IR_B_value = SensorValue[IR_B] < 2700 ? true : false;
+        IR_C_value = SensorValue[IR_C] < 2700 ? true : false;
+        IR_D_value = SensorValue[IR_D] < 2700 ? true : false;
+    
     // Read limit switches
     limitSwitches[0] = SensorValue[limitswitchLB];
     limitSwitches[1] = SensorValue[limitswitchRB];
@@ -92,7 +95,7 @@ void readSensors() {
     distances.distBC = getSharpDistance(sharpBC, SensorValue[sharpBC]);
 
     // Update status flags
-    status.isBoundary = (IR_values[0] || IR_values[1] || IR_values[2] || IR_values[3]);
+    status.isBoundary = (IR_A_value || IR_B_value ||IR_C_value || IR_D_value);
     status.isFrontObstacle = (distances.distFC < 30.0);
     status.isBackObstacle = (distances.distBC < 30.0);
 }
@@ -125,7 +128,7 @@ void moveDistance(float distance, bool backward) {
 }
 
 void turnDegrees(float degrees, bool right) {
-    float realDegrees = degrees * 2.9;
+    float realDegrees = degrees * 3.1;
     float turningCircumference = PI * WHEEL_BASE;
     float arcLength = (realDegrees / 180.0) * turningCircumference;
     int targetTicks = distanceToTicks(arcLength);
@@ -151,35 +154,30 @@ void turnDegrees(float degrees, bool right) {
     motor[motorLeft] = 0;
     motor[motorRight] = 0;
 }
+
 // Boundary Handling Function
 void handleBoundary() {
     // Stop motors immediately 
     motor[motorLeft] = 0;
     motor[motorRight] = 0;
-
-    // Read sensor states (0 = boundary detected)
-    bool frontRight = (IR_values[0] == 0);
-    bool frontLeft  = (IR_values[1] == 0);
-    bool backRight  = (IR_values[2] == 0);
-    bool backLeft   = (IR_values[3] == 0);
+    
 
     // Combined special cases first
-    if (frontRight && backRight && limitSwitches[0] && limitSwitches[1]) { 
+    if (IR_A_value && IR_C_value  && limitSwitches[0] && limitSwitches[1]) { 
+    	  writeDebugStreamLine("boundary on right! turn left");
         turnDegrees(90,false);       // Turn left
         moveDistance(0.3,false);           // Move forward 30cm
-    }
-    else if (frontLeft && backLeft && limitSwitches[0] && limitSwitches[1]) {
-        turnDegrees(90, true);       // Turn Right
-        moveDistance(0.3,false);          // Move forward 30cm
-    }
-    // Handle individual front triggers
-    else if ((frontRight || frontLeft) && limitSwitches[0] && limitSwitches[1]) {
-        moveDistance(0.30, true);     // Reverse back 30cm
-        turnDegrees(180, false);  // Turn around
-    }
-    // Handle individual rear triggers
-    else if ((backRight || backLeft) && limitSwitches[0] && limitSwitches[1]) {
-        moveDistance(0.30,false);           // Move forward 30cm
+    } else if (IR_B_value&& IR_D_value && limitSwitches[0] && limitSwitches[1]) {
+        writeDebugStreamLine("boundary on left! turn right");
+        turnDegrees(90,true);       // Turn right
+        moveDistance(0.3,false);           // Move forward 30cm
+    } else if ((IR_A_value || IR_B_value) && limitSwitches[0] && limitSwitches[1]){
+        writeDebugStreamLine("boundary in front! turn back");
+        moveDistance(0.2,true);    // Move back 10cm
+        turnDegrees(180,true);     //Reverse
+    } else if ((IR_C_value || IR_D_value) && limitSwitches[0] && limitSwitches[1]){
+        writeDebugStreamLine("boundary in back! move front");
+        moveDistance(0.3,false); // Move forward 30cm
     }
 }
 
@@ -202,7 +200,7 @@ void handleObstacle() {
     
     // Handle front obstacles if moving forward
     if (status.isFrontObstacle) {
-        if (distances.distFC <= 0.2) {
+        if (distances.distFC <= 15) {
             moveDistance(0.2, true);  // Reverse 20cm away from the obstacle
         }
         
@@ -218,7 +216,7 @@ void handleObstacle() {
     
     // Handle back obstacles if reversing
     else if (status.isBackObstacle && motor[motorLeft] < 0 && motor[motorRight] < 0) {
-        if (distances.distBC <= 0.2) {
+        if (distances.distBC <= 15) {
             moveDistance(0.2,false);  // Move forward 20cm
         }
 
@@ -240,7 +238,6 @@ task testObstacleBoundaryDetection() {
         
         // Display sensor readings
         writeDebugStreamLine("\n--- SENSOR READINGS ---");
-        writeDebugStreamLine("IR: %d %d %d %d", IR_values[0], IR_values[1], IR_values[2], IR_values[3]);
         writeDebugStreamLine("Distances: FC=%.1f FR=%.1f FL=%.1f BC=%.1f",
                            distances.distFC, distances.distFR, distances.distFL, distances.distBC);
         writeDebugStreamLine("Status: Boundary=%d FrontObst=%d BackObst=%d",
