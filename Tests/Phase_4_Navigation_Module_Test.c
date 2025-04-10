@@ -62,8 +62,7 @@ const float PAN_ANGLE = 20;
 const float INITIAL_DISTANCE = 1.2;
 const float ROW_DISTANCE = 0.3;
 const float SPIRAL_BASE = 0.4;
-const float SPIRAL_INC = 0.15;
-const int HOME_BASE_HEADING = 180;
+const float SPIRAL_INC = 0.15; 	
 
 const float CIRCUMFERENCE = WHEEL_DIAMETER * PI;
 const float DISTANCE_PER_TICK = CIRCUMFERENCE / TICKS_PER_REV;
@@ -409,22 +408,21 @@ void moveTowardsBall() {
         turnRight = true;
     }
 
-    float moveDist = (targetDistance * 0.01) - 0.20; // Convert cm to m and add safety buffer
-    
-    clear(T1);
-    while (T1<2400 && status.isBall){
+//    float moveDist = (targetDistance * 0.01) - 0.20; // Convert cm to m and add safety buffer
+
+    clearTimer(T1);
+    while (time1[T1]<2400 && status.isBall){
         motor[motorLeft]= 10;
         motor[motorRight]= 10;
         wait1Msec(50);
         status.ballWithinSight = true; // Ball is within sight
         }
-    }
+
     if (status.ballWithinSight) {
-        turnDegrees(25, turnRight);
+        turnDegrees(25, true);
         moveDistance(0.3, false); // Final forward approach to swoop the ball in
     }
 }
-
 // Boundary Handling Function
 void handleBoundary() {
     // Stop motors immediately 
@@ -510,7 +508,7 @@ void returnToBase() {
         motor[motorLeft] = (OFFSET_POWER_FOR_LEFT_MOTOR*reducedSpeed);
         motor[motorRight] = -reducedSpeed;
         wait1Msec(500);
-             break;
+            break;
         }
 
         // Move backward continuously
