@@ -410,14 +410,14 @@ void moveTowardsBall() {
     }
 
     float moveDist = (targetDistance * 0.01) - 0.20; // Convert cm to m and add safety buffer
-
-    while (true){
-        moveDistance(moveDist, false);
-        if (distances.distFL<=moveDist || distances.distFR<=moveDist){
-            status.ballWithinSight = true;
-            break;
+    
+    clear(T1);
+    while (T1<2400 && status.isBall){
+        motor[motorLeft]= 10;
+        motor[motorRight]= 10;
+        wait1Msec(50);
+        status.ballWithinSight = true; // Ball is within sight
         }
-        break;
     }
     if (status.ballWithinSight) {
         turnDegrees(25, turnRight);
