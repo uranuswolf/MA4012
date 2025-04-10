@@ -620,8 +620,8 @@ void MoveTowardsBall() {
         
   	} if (distance.distFR < 20.0) {
     	turnDegrees(30, true);
-    	motor[motorL] = 0;
-        motor[motorR] = 0;
+    	motor[motorL] = 30;
+        motor[motorR] = 30;
         
     } else {
         motor[motorL] = 30;
