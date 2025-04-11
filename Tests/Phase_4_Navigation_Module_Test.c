@@ -544,7 +544,7 @@ task readIsBall(){
     if (status.isBall && !status.isBallDetectedFlag) {
     status.isBallDetectedFlag = true;
     }
-    wait1Msec(70); // update once every second
+    wait1Msec(50); // update once every second
     }
 }
 
@@ -620,7 +620,7 @@ void searchPhase() {
             stopTask(searchingBallTask);
             motor[motorLeft] = 0;
             motor[motorRight] = 0;
-            wait1Msec(100);
+            wait1Msec(1000);
             currentState = COLLECT;
             break;
         }
