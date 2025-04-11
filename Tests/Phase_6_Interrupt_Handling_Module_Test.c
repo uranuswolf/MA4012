@@ -163,22 +163,38 @@ void handleBoundary() {
     
 
     // Combined special cases first
-    if (IR_A_value && IR_C_value  && limitSwitches[0] && limitSwitches[1]) { 
-    	  writeDebugStreamLine("boundary on right! turn left");
+    if (IR_A_value && IR_C_value  && limitSwitches[0] && limitSwitches[1]) { //Limit Switches not pressed
+    	writeDebugStreamLine("boundary on right! turn left");
         turnDegrees(90,false);       // Turn left
-        moveDistance(0.3,false);           // Move forward 30cm
-    } else if (IR_B_value&& IR_D_value && limitSwitches[0] && limitSwitches[1]) {
+        moveDistance(0.3,false);     // Move forward 30cm
+        return;
+    } if (IR_B_value && IR_D_value && limitSwitches[0] && limitSwitches[1]) {
         writeDebugStreamLine("boundary on left! turn right");
         turnDegrees(90,true);       // Turn right
-        moveDistance(0.3,false);           // Move forward 30cm
-    } else if ((IR_A_value || IR_B_value) && limitSwitches[0] && limitSwitches[1]){
+        moveDistance(0.3,false);    // Move forward 30cm
+        return;
+    } if ((IR_A_value || IR_B_value) && limitSwitches[0] && limitSwitches[1]){
         writeDebugStreamLine("boundary in front! turn back");
-        moveDistance(0.2,true);    // Move back 10cm
-        turnDegrees(180,true);     //Reverse
+	    if (IR_A_value && !IR_B_value){
+	       turnDegrees(75,false); //turn left
+           moveDistance(0.3,false); // Move forward 30cm
+           return;
+	   
+        }if (IR_B_value && !IR_A_value){
+	       turnDegrees(75,true);
+	       moveDistance(0.3,false);
+           return;
+	    }if(IR_B_value && IR_A_value){
+            moveDistance(0.3,true);
+	       turnDegrees(180,false);
+           return;
+	    }
     } else if ((IR_C_value || IR_D_value) && limitSwitches[0] && limitSwitches[1]){
         writeDebugStreamLine("boundary in back! move front");
-        moveDistance(0.3,false); // Move forward 30cm
-    }
+	    moveDistance(0.3,false);
+        return;
+	    }
+
 }
 
 // Helper function to decide turn direction based on side distances
@@ -200,7 +216,7 @@ void handleObstacle() {
     
     // Handle front obstacles if moving forward
     if (status.isFrontObstacle) {
-        if (distances.distFC <= 15) {
+        if (distances.distFC <= 20) {
             moveDistance(0.2, true);  // Reverse 20cm away from the obstacle
         }
         
@@ -231,6 +247,7 @@ void handleObstacle() {
     } 
 }
 
+
 // Test Task
 task testObstacleBoundaryDetection() {
     while(true) {
@@ -260,6 +277,8 @@ task testObstacleBoundaryDetection() {
 task main() {
     // Start the test task
     startTask(testObstacleBoundaryDetection);
+    motor[motorLeft]= OFFSET_POWER_FOR_LEFT_MOTOR*15
+    motor[motorRight]=15
     
     // Keep main task running
     while(true) {

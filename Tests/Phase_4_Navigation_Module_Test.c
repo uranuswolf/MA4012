@@ -54,12 +54,12 @@ const float PI = 3.14159265359;
 const float WHEEL_DIAMETER = 0.06985;
 const float WHEEL_BASE = 0.188;
 const int TICKS_PER_REV = 90;
-const int BASE_POWER = 30;
+const int BASE_POWER = 45;
 const float DISTANCE_CORRECTION_FACTOR = 3.85;
 const float OFFSET_POWER_FOR_LEFT_MOTOR = 1.28;
 const int ROLLER_SPEED = 127;
-const float PAN_ANGLE = 20;
-const float INITIAL_DISTANCE = 1.2;
+const float PAN_ANGLE = 10;
+const float INITIAL_DISTANCE = 1;
 const float ROW_DISTANCE = 0.3;
 
 const float CIRCUMFERENCE = WHEEL_DIAMETER * PI;
@@ -144,13 +144,11 @@ void randomsearch(void);
 //============================================================ Helper Functions ==================================================================
 
 void resetStatus() {
-    status.isBoundary = false;
     status.isBall = false;
     status.isFrontObstacle = false;
     status.isBackObstacle = false;
     status.isBallPicked = false;
     status.reachedBase = false;
-    status.isDelivered = false;
     status.panRight = false;
     status.isBallDetectedFlag = false;
 }
@@ -215,11 +213,18 @@ void readSensors() {
 
     // Update status flags
     status.isBoundary = (IR_A_value || IR_B_value ||IR_C_value || IR_D_value);
-    status.isFrontObstacle = (distances.distFC < 20.0);
-    status.isBackObstacle = (distances.distBC < 20.0);
+    status.isFrontObstacle = (distances.distFC < 40.0);
+    status.isBackObstacle = (distances.distBC < 40.0);
+
+    status.isBall = ((distances.distFL <= 50) || (distances.distFR <= 50)) &&
+    (!status.isFrontObstacle);
 
     
-        // Only update based on the switch inside the DELIVER check
+    if (status.isBall && !status.isBallDetectedFlag) {
+    status.isBallDetectedFlag = true;
+    }
+    
+    // Only update based on the switch inside the DELIVER check
     if (currentState == DELIVER) {
         status.isBallPicked = (limitSwitches[2] == 0); 
     } else {
@@ -272,7 +277,7 @@ void turnDegrees(float degrees, bool right) {
     SensorValue[LEFT_ENCODER] = 0;
     SensorValue[RIGHT_ENCODER] = 0;
 
-    int reducedSpeed = 60;
+    int reducedSpeed = 50;
 
     if (right) {
         motor[motorLeft] = (OFFSET_POWER_FOR_LEFT_MOTOR*reducedSpeed);
@@ -317,45 +322,46 @@ float compass(int heading){
 void randomsearch() {
     int angle = 50 + rand()%(360-50+1);
     int direction = rand() % 2;
-    float distance = (rand()%(21))/10;
-    if(IR_A_value == false && IR_B_value == false){
-        turnDegrees(angle, direction);
-        wait1Msec(1000);
-        moveDistance(distance,false);
+    turnDegrees(angle/2, direction);
+    wait1Msec(500);
+    turnDegrees(angle/2, direction);
+    wait1Msec(500);
 
-      }
+    motor[motorLeft] = 30;
+    motor[motorRight] = 30;
+
 }
-
 
 void searchingAlgo() {
 
     // Phase 1: Runs exactly once at startup (before first delivery)
-    if (!status.isfirstBallDelivered && searchIteration == 0) {
+    if ( searchIteration == 0) {
         searchIteration++;  // Increment here to ensure Phase 1 runs ONLY ONCE
 
         // 1st pan in 1st row 
         moveDistance(INITIAL_DISTANCE);
         wait1Msec(1000);
         turnDegrees(PAN_ANGLE, status.panRight);
-        wait1Msec(1000);
-        turnDegrees(PAN_ANGLE, !status.panRight);
-        wait1Msec(1000);
+        wait1Msec(500);
+        turnDegrees(PAN_ANGLE, status.panRight);
+        wait1Msec(500);
+        turnDegrees(PAN_ANGLE, status.panRight);
+        wait1Msec(500);
+        turnDegrees((3*PAN_ANGLE), !status.panRight);
+        wait1Msec(500);
+       
 
         // 2nd pan in 2nd row 
         moveDistance(ROW_DISTANCE);
         wait1Msec(1000);
         turnDegrees(PAN_ANGLE, status.panRight);
-        wait1Msec(1000);
-        turnDegrees(PAN_ANGLE, !status.panRight);
-        wait1Msec(1000);
-
-        // 3rd pan in 3rd row
-        moveDistance(ROW_DISTANCE);
-        wait1Msec(1000);
+        wait1Msec(500);
         turnDegrees(PAN_ANGLE, status.panRight);
-        wait1Msec(1000);
-        turnDegrees(PAN_ANGLE, !status.panRight);
-        wait1Msec(1000);
+        wait1Msec(500);
+        turnDegrees(PAN_ANGLE, status.panRight);
+        wait1Msec(500);
+        turnDegrees((3*PAN_ANGLE), !status.panRight);
+        wait1Msec(500);
     }
     else {
         randomsearch();
@@ -384,7 +390,12 @@ void moveTowardsBall() {
 
 // Boundary Handling Function
 void handleBoundary() {
-    // Stop motors immediately 
+    
+    if (status.reachedBase) return;
+
+    motor[motorLeft] = -(127*OFFSET_POWER_FOR_LEFT_MOTOR);
+    motor[motorRight] = -127;
+    wait1Msec(100);
     motor[motorLeft] = 0;
     motor[motorRight] = 0;
     
@@ -418,8 +429,19 @@ void handleBoundary() {
 	    }
     } else if ((IR_C_value || IR_D_value) && limitSwitches[0] && limitSwitches[1]){
         writeDebugStreamLine("boundary in back! move front");
-	    moveDistance(0.3,false);
-        return;
+	    if (IR_C_value && !IR_D_value){
+            moveDistance(0.3,false); // Move forward 30cm
+            turnDegrees(35,true); 
+            return;
+        
+         }if (IR_D_value && !IR_C_value){
+            moveDistance(0.3,false);
+            turnDegrees(35,false); //turn left
+            return;
+         }if(IR_C_value && IR_D_value){
+             moveDistance(0.3,true);
+            return;
+         }
 	    }
 
 }
@@ -439,13 +461,16 @@ void decideTurn(float leftDist, float rightDist) {
 
 // Obstacle Handling Function
 void handleObstacle() {
-    // Stop motors immediately 
+
+    motor[motorLeft] = -(127*OFFSET_POWER_FOR_LEFT_MOTOR);
+    motor[motorRight] = -127;
+    wait1Msec(100);
     motor[motorLeft] = 0;
-    motor[motorRight] = 0; 
+    motor[motorRight] = 0;
     
     // Handle front obstacles if moving forward
     if (status.isFrontObstacle) {
-        if (distances.distFC <= 20) {
+        if (distances.distFC <= 25) {
             moveDistance(0.2, true);  // Reverse 20cm away from the obstacle
         }
         
@@ -455,22 +480,25 @@ void handleObstacle() {
         if (status.isFrontObstacle) {
             decideTurn(distances.distFL, distances.distFR);
             moveDistance(0.2,false);  // Move forward slightly after turn
+            return;
         }
         return;
     } 
     
     // Handle back obstacles if reversing
     else if (status.isBackObstacle && motor[motorLeft] < 0 && motor[motorRight] < 0) {
-        if (distances.distBC <= 15) {
-            moveDistance(0.2,false);  // Move forward 20cm
+        if (distances.distBC <= 25) {
+            writeDebugStreamLine("HANDLING BACK OBSTACLE NOW");
+            moveDistance(0.2,true);  // Move forward 20cm
         }
 
         wait1Msec(1500);  // Allow time for sensor update
 
         // Recheck if the back obstacle is still present
         if (status.isBackObstacle) {
+            writeDebugStreamLine("HANDLING BACK OBSTACLE NOWWWWWWWWWW");
             decideTurn(distances.distFL, distances.distFR);
-            moveDistance(0.2,false);  // Move forward slightly after turn
+            moveDistance(0.2,true);  // Move forward slightly after turn
         }
         return;
     } 
@@ -479,17 +507,17 @@ void handleObstacle() {
 
 void returnToBase() {
     //HOME_BASE_HEADING = 180;
-	int reducedSpeed = 25; // Adjust speed as needed
+	int reducedSpeed = 35; // Adjust speed as needed
     while(!(compass(heading) == 180)) {
         writeDebugStreamLine("TURNING TO THE REQUIRED HOMEBASED HEADING");
         motor[motorLeft] = (OFFSET_POWER_FOR_LEFT_MOTOR*reducedSpeed);
         motor[motorRight] = -reducedSpeed;
-        wait1Msec(10);
+        wait1Msec(50);
         }
 
         // Move backward continuously
-        motor[motorLeft] = -(OFFSET_POWER_FOR_LEFT_MOTOR*reducedSpeed);
-        motor[motorRight] = -reducedSpeed;
+        motor[motorLeft] = -(OFFSET_POWER_FOR_LEFT_MOTOR*reducedSpeed*0.8);
+        motor[motorRight] = -(reducedSpeed*0.8);
     }
 
 
@@ -499,15 +527,12 @@ void returnToBase() {
 task readSensorsTask() {
     while(true) {
         readSensors();
-        wait1Msec(100); 
+        wait1Msec(5); 
     }
 }
 
 task searchingBallTask() {
-    while(true) {
-        searchingAlgo(); //the second time this function is called, then it will be in the else statement
-        wait1Msec(100);
-    }
+    searchingAlgo(); //the second time this function is called, then it will be in the else statement
 }
 
 task moveTowardsBallTask() {
@@ -521,32 +546,10 @@ task returnToBaseTask(){
 task startBallSecuring() {
         motor[BACK_ROLLER] = -50;  // Close the flapper
         frontRollerControl(OUTPUT); // Reverse the front roller to prevent extra balls from being picked up
-        wait1Msec(300);             // Wait for 300 milliseconds
+        wait1Msec(200);             // Wait for 300 milliseconds
         motor[BACK_ROLLER] = 0;    // Stop the back roller
     }
 
-task startBallDispensing() {
-        frontRollerControl(STOP);   // Stop the front roller
-        motor[BACK_ROLLER] = -50;   // Reverse the back roller to dispense the ball
-        wait1Msec(800);             
-        //Open the flapper again
-        motor[BACK_ROLLER] = 50;    // Move the back roller forward to ensure ball is fully dispensed
-        wait1Msec(2000);            // Wait for 1000 milliseconds for the ball to be fully dispensed
-        motor[BACK_ROLLER] = 0;     // Stop the back roller
-}
-
-task readIsBall(){
-    while(true) {
-    status.isBall = ((distances.distFL <= 30) || (distances.distFR <= 30)) &&
-    (!status.isFrontObstacle);
-
-    
-    if (status.isBall && !status.isBallDetectedFlag) {
-    status.isBallDetectedFlag = true;
-    }
-    wait1Msec(50); // update once every second
-    }
-}
 
     
 //============================================================ Test Task ==================================================================
@@ -567,8 +570,8 @@ task testSensorModuleTask() {
         writeDebugStreamLine("Boundary: %d | Ball: %d | F.Obst: %d | B.Obst: %d",
                                status.isBoundary, status.isBall,
                                status.isFrontObstacle, status.isBackObstacle);
-        writeDebugStreamLine("Ball Picked: %d | Pan Right: %d | First Delivered: %d",
-                               status.isBallPicked, status.panRight, status.isfirstBallDelivered);
+        writeDebugStreamLine("Ball Picked: %d | Pan Right: %d",
+                               status.isBallPicked, status.panRight);
         writeDebugStreamLine("Raw IR: A=%d B=%d C=%d D=%d", 
         SensorValue[IR_A], SensorValue[IR_B], SensorValue[IR_C], SensorValue[IR_D]);
     
@@ -586,7 +589,7 @@ task testSensorModuleTask() {
         // Display current robot state
         writeDebugStreamLine("Current State: %d (0=SEARCH, 1=COLLECT, 2=RETURN , 3=DELIVER)", currentState);    
         
-        wait1Msec(1000); // Reduced delay for more frequent updates
+        wait1Msec(60); // Reduced delay for more frequent updates
         }
     }
     
@@ -617,6 +620,7 @@ void searchPhase() {
         }
 
         if(status.isBall || status.isBallDetectedFlag) {
+            writeDebugStreamLine("ROBOT SEES A BALL");
             stopTask(searchingBallTask);
             motor[motorLeft] = 0;
             motor[motorRight] = 0;
@@ -634,12 +638,13 @@ void searchPhase() {
             break;
         }
 
-        wait1Msec(100); 
+        wait1Msec(60); 
     }
 }
 
 
 void collectPhase() {
+    writeDebugStreamLine("ROBOT IS MOVING TOWARDS A BALL");
     startTask(moveTowardsBallTask);
     clearTimer(T1);  // Reset timer T1 at the beginning
     
@@ -683,54 +688,74 @@ void collectPhase() {
             break;
         }
 
-        wait1Msec(100);
+        wait1Msec(60);
     }
 }
 
 void returnPhase() {
-    startTask(returnToBaseTask); // Start returning to base
+    startTask(returnToBaseTask);
     while(currentState == RETURN) {
-        // Step 1: Handle boundary first
-        if (status.isBoundary && !status.reachedBase) {
-
-            stopTask(returnToBaseTask); 
-            handleBoundary();
-            wait1Msec(500); // small pause to stabilize
-            startTask(returnToBaseTask); // Restart searching after handling obstacle
-            continue;       // restart loop
-        }
-
-        // If an obstacle is detected, handle it
-        if(status.isFrontObstacle || status.isBackObstacle) {
-            stopTask(returnToBaseTask); 
-            handleObstacle();
-            wait1Msec(500); // small pause to stabilize
-            startTask(returnToBaseTask); // Restart searching after handling obstacle
-            continue;       // restart loop
+        // Only handle boundaries if we haven't reached base yet
+        if (!status.reachedBase) {
+            if (status.isBoundary) {
+                stopTask(returnToBaseTask); 
+                handleBoundary();
+                wait1Msec(500);
+                startTask(returnToBaseTask);
+                continue;
+            }
+            
+            if(status.isFrontObstacle || status.isBackObstacle) {
+                stopTask(returnToBaseTask); 
+                handleObstacle();
+                wait1Msec(500);
+                startTask(returnToBaseTask);
+                continue;
+            }
         }
       
         if (status.reachedBase) {
             stopTask(returnToBaseTask); 
-            motor[motorLeft] = 0;  
+            frontRollerControl(STOP);   // Stop the front roller
+            motor[motorLeft] = -20;
+            motor[motorRight] = -20;
+            wait1Msec(300);
+            motor[motorLeft] = 0;
             motor[motorRight] = 0;
-            currentState = DELIVER;
+            
+            // Additional verification
+            wait1Msec(10);  // Let robot settle
+            
+            // Double-check we're still at base
+            if (!limitSwitches[0] ||!limitSwitches[1] && 
+                IR_C_value && IR_D_value) {
+                currentState = DELIVER;
+            } else {
+                status.reachedBase = false;  // Reset if not properly aligned
+                startTask(returnToBaseTask); // Try again
+            }
             break;  
         }
-        wait1Msec(100);
-}
+        wait1Msec(60);
+    }
 }
 
 void deliverPhase() {
-    startTask(startBallDispensing); // Start dispensing the ball
-    while(true){
 
-        if (!status.isBallPicked) {
-            currentState = SEARCH; // Go back to search state
-            break;
-        }
-        wait1Msec(100);
-    }
+    motor[BACK_ROLLER] = -50;   // Reverse the back roller to dispense the ball
+    wait1Msec(800);             
+    //Open the flapper again
+    motor[BACK_ROLLER] = 50;    // Move the back roller forward to ensure ball is fully dispensed
+    wait1Msec(2000);            // Wait for 1000 milliseconds for the ball to be fully dispensed
+    motor[BACK_ROLLER] = 0;     // Stop the back roller
+    frontRollerControl(INTAKE);
+    moveDistance(1.2,false);
+    wait1Msec(1000);
+    currentState = SEARCH;
+    return;
+          
 }
+
 
 //============================================================ Main Task ==================================================================
 task main() {
@@ -751,7 +776,6 @@ task main() {
 
     // Initialize sensor reading task
     startTask(readSensorsTask);
-    startTask(readIsBall); // Start the task to check if the ball is detected
     startTask(testSensorModuleTask); // for debugging purposes
     wait1Msec(500); // Allow sensors to stabilize
 
