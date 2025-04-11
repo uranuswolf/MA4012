@@ -478,13 +478,12 @@ void handleObstacle() {
 
 void returnToBase() {
     //HOME_BASE_HEADING = 180;
-	int reducedSpeed = 30; // Adjust speed as needed
+	int reducedSpeed = 25; // Adjust speed as needed
     while(!(compass(heading) == 180)) {
         writeDebugStreamLine("TURNING TO THE REQUIRED HOMEBASED HEADING");
         motor[motorLeft] = (OFFSET_POWER_FOR_LEFT_MOTOR*reducedSpeed);
         motor[motorRight] = -reducedSpeed;
-        wait1Msec(1000);
-        break;
+        wait1Msec(10);
         }
 
         // Move backward continuously
@@ -544,7 +543,7 @@ task readIsBall(){
     if (status.isBall && !status.isBallDetectedFlag) {
     status.isBallDetectedFlag = true;
     }
-    wait1Msec(1000); // Small delay to prevent overloading the CPU
+    wait1Msec(1000); // update once every second
     }
 }
 
