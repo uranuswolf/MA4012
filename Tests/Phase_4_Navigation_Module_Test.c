@@ -81,8 +81,9 @@ typedef struct {
     bool isBallPicked;
     bool reachedBase;
     bool isDelivered;
-    bool isfirstBallDelivered; // Flag to check if the first ball is delivered
-    bool panRight; // Flag to check if should pan left or right at the start of the search
+    bool isfirstBallDelivered; 
+    bool panRight; 
+    bool isBallDetectedFlag;
 } StatusFlags;
 //============================================================ Enum definition ==================================================================
 typedef enum RollerMode {
@@ -124,15 +125,19 @@ void turnDegrees(float degrees, bool right=false);
 void searchingAlgo(void);
 void resetStatus(void);
 void moveTowardsBall(void);
+
 void searchPhase(void);
 void collectPhase(void);
 void returnPhase(void);
+void deliverPhase(void);
+
 void decideTurn(float leftDist, float rightDist);
 void handleObstacle(void);
 void handleBoundary(void);
 void returnToBase(void);
 float compass(int heading);
 void randomsearch(void);
+
 
 
 
@@ -147,6 +152,7 @@ void resetStatus() {
     status.reachedBase = false;
     status.isDelivered = false;
     status.panRight = false;
+    status.isBallDetectedFlag = false;
 }
 
 void frontRollerControl(RollerMode mode) {
@@ -178,60 +184,63 @@ float getSharpDistance(tSensors sensor, int analogValue) {
 }
 
 void readSensors() {
+
+    // Read IR sensors   
+    IR_A_value = SensorValue[IR_A] < 2700 ? true : false;
+    IR_B_value = SensorValue[IR_B] < 2700 ? true : false;
+    IR_C_value = SensorValue[IR_C] < 2700 ? true : false;
+    IR_D_value = SensorValue[IR_D] < 2700 ? true : false;
+
+    // Read limit switches
+    limitSwitches[0] = SensorValue[limitswitchLB];
+    limitSwitches[1] = SensorValue[limitswitchRB];
+    limitSwitches[2] = SensorValue[limitswitchBall];
+
+    if (!panRightInitialized) {
+        status.panRight = (limitSwitches[0] == 0) ? true : false; 
+        panRightInitialized = true;
+    }
+
+    // Read compass
+    heading = SensorValue[compass_MSB] * 8 + 
+    SensorValue[compass_Bit2] * 4 + 
+    SensorValue[compass_Bit3] * 2 + 
+    SensorValue[compass_LSB];
+
+    // Read sharp sensors
+    distances.distFC = getSharpDistance(sharpFC, SensorValue[sharpFC]);
+    distances.distFR = getSharpDistance(sharpFR, SensorValue[sharpFR]);
+    distances.distFL = getSharpDistance(sharpFL, SensorValue[sharpFL]);
+    distances.distBC = getSharpDistance(sharpBC, SensorValue[sharpBC]);
+
+    // Update status flags
+    status.isBoundary = (IR_A_value || IR_B_value ||IR_C_value || IR_D_value);
+    status.isFrontObstacle = (distances.distFC < 30.0);
+    status.isBackObstacle = (distances.distBC < 30.0);
+
     
-IR_A_value = SensorValue[IR_A] < 2700 ? true : false;
-IR_B_value = SensorValue[IR_B] < 2700 ? true : false;
-IR_C_value = SensorValue[IR_C] < 2700 ? true : false;
-IR_D_value = SensorValue[IR_D] < 2700 ? true : false;
+    status.isBall = ((distances.distFL <= 50) || (distances.distFR <= 50)) &&
+                    (!status.isFrontObstacle);
+    
+                    
+    if (status.isBall) {
+        status.isBallDetectedFlag = true;
+    }
 
-// Read limit switches
-limitSwitches[0] = SensorValue[limitswitchLB];
-limitSwitches[1] = SensorValue[limitswitchRB];
-limitSwitches[2] = SensorValue[limitswitchBall];
+        // Only update based on the switch inside the DELIVER check
+    if (currentState == DELIVER) {
+        status.isBallPicked = (limitSwitches[2] == 0); 
+    } else {
+        status.isBallPicked = status.isBallPicked || (limitSwitches[2] == 0);
+    }
 
-if (!panRightInitialized) {
-    status.panRight = (limitSwitches[0] == 0) ? true : false; // default to true
-    panRightInitialized = true;
-}
-
- // Read compass
- heading = SensorValue[compass_MSB] * 8 + 
- SensorValue[compass_Bit2] * 4 + 
- SensorValue[compass_Bit3] * 2 + 
- SensorValue[compass_LSB];
-
-// Read sharp sensors
-distances.distFC = getSharpDistance(sharpFC, SensorValue[sharpFC]);
-distances.distFR = getSharpDistance(sharpFR, SensorValue[sharpFR]);
-distances.distFL = getSharpDistance(sharpFL, SensorValue[sharpFL]);
-distances.distBC = getSharpDistance(sharpBC, SensorValue[sharpBC]);
-
-// Update status flags
-status.isBoundary = (IR_A_value || IR_B_value ||IR_C_value || IR_D_value);
-status.isFrontObstacle = (distances.distFC < 30.0);
-status.isBackObstacle = (distances.distBC < 30.0);
-
-status.isBall = ((10 <= distances.distFL && distances.distFL <= 50) || 
-                 (10 <= distances.distFR && distances.distFR <= 50)) &&
-                (!status.isFrontObstacle);
-
-// Only allow resetting isBallPicked during DELIVER state
-if (currentState == DELIVER) {
-status.isBallPicked = (limitSwitches[2] == 0); 
- } else {
-// Once it's true, don't let it go false until DELIVER state
-status.isBallPicked = status.isBallPicked || (limitSwitches[2] == 0);
-}
-
-if (currentState == RETURN && !status.reachedBase) {
-    if ((limitSwitches[0] == 0 || limitSwitches[1] == 0) && // 0 means limit switch is pressed
-        (IR_C_value == true && IR_D_value == true)) {
-        status.reachedBase = true;
+    if (currentState == RETURN && !status.reachedBase) {
+        if ((limitSwitches[0] == 0 || limitSwitches[1] == 0) && // 0 means limit switch is pressed
+            (IR_C_value == true && IR_D_value == true)) {
+            status.reachedBase = true;
+        }
     }
 }
-}
-
-
 
 
 int distanceToTicks(float distance) {
@@ -270,7 +279,7 @@ void turnDegrees(float degrees, bool right) {
     SensorValue[LEFT_ENCODER] = 0;
     SensorValue[RIGHT_ENCODER] = 0;
 
-    int reducedSpeed = 50;
+    int reducedSpeed = 60;
 
     if (right) {
         motor[motorLeft] = (OFFSET_POWER_FOR_LEFT_MOTOR*reducedSpeed);
@@ -312,14 +321,13 @@ float compass(int heading){
 	return -1;
 }
 
-void randomsearch(){
+void randomsearch() {
     int angle = 50 + rand()%(360-50+1);
-    int direction= rand() %2;
-    while(!status.isBoundary){
-      turnDegrees(angle,direction);
-      motor[motorLeft]=60;
-      motor[motorRight]=60;
-    }
+    int direction = rand() % 2;
+    turnDegrees(angle, direction);
+    wait1Msec(1000);
+    motor[motorLeft] = 60;
+    motor[motorRight] = 60;
 }
 
 
@@ -354,32 +362,29 @@ void searchingAlgo() {
         wait1Msec(1000);
     }
     else {
-        while(true){
-            randomsearch();
-        }
+        randomsearch();
     }
 }
 
 
 
 void moveTowardsBall() {
-
     if (distances.distFL < distances.distFR) {
         // Ball is more to the left
-        turnDegrees(20,false);
-        wait1Msec(500);
-        motor[motorLeft] =30;
+        turnDegrees(20, false);
+        wait1Msec(1000);
+        motor[motorLeft] = 30;
         motor[motorRight] = 30;
     }
     else {
         // Ball is more to the right
-        turnDegrees(20,true);
-        wait1Msec(500);
-        motor[motorLeft] =30;
+        turnDegrees(20, true);
+        wait1Msec(1000);
+        motor[motorLeft] = 30;
         motor[motorRight] = 30;
     }
-   
 }
+
 
 // Boundary Handling Function
 void handleBoundary() {
@@ -389,14 +394,14 @@ void handleBoundary() {
     
 
     // Combined special cases first
-    if (IR_A_value && IR_C_value  && limitSwitches[0] && limitSwitches[1]) { 
-    	  writeDebugStreamLine("boundary on right! turn left");
+    if (IR_A_value && IR_C_value  && limitSwitches[0] && limitSwitches[1]) { //Limit Switches not pressed
+    	writeDebugStreamLine("boundary on right! turn left");
         turnDegrees(90,false);       // Turn left
-        moveDistance(0.3,false);           // Move forward 30cm
+        moveDistance(0.3,false);     // Move forward 30cm
     } else if (IR_B_value&& IR_D_value && limitSwitches[0] && limitSwitches[1]) {
         writeDebugStreamLine("boundary on left! turn right");
         turnDegrees(90,true);       // Turn right
-        moveDistance(0.3,false);           // Move forward 30cm
+        moveDistance(0.3,false);    // Move forward 30cm
     } else if ((IR_A_value || IR_B_value) && limitSwitches[0] && limitSwitches[1]){
         writeDebugStreamLine("boundary in front! turn back");
         moveDistance(0.2,true);    // Move back 10cm
@@ -481,7 +486,7 @@ void returnToBase() {
 task readSensorsTask() {
     while(true) {
         readSensors();
-        wait1Msec(50);
+        wait1Msec(800); //OR USE 1000
     }
 }
 
@@ -493,9 +498,7 @@ task searchingBallTask() {
 }
 
 task moveTowardsBallTask() {
-    while(true) {
-        moveTowardsBall();
-    }
+    moveTowardsBall();
 }
 
 task returnToBaseTask(){
@@ -543,8 +546,21 @@ task testSensorModuleTask() {
         writeDebugStreamLine("Raw IR: A=%d B=%d C=%d D=%d", 
         SensorValue[IR_A], SensorValue[IR_B], SensorValue[IR_C], SensorValue[IR_D]);
     
-            
-            wait1Msec(1000); // Reduced delay for more frequent updates
+        // Additional status checks
+        if (!status.isBallDetectedFlag) {
+            writeDebugStreamLine("Status: Ball detected flag is not set.");
+        }
+
+        // Additional status checks
+        if (status.isBallDetectedFlag) {
+            writeDebugStreamLine("Status: Ball detected flag is set.");
+        }
+
+
+        // Display current robot state
+        writeDebugStreamLine("Current State: %d (0=SEARCH, 1=COLLECT, 2=DELIVER)", currentState);    
+        
+        wait1Msec(1000); // Reduced delay for more frequent updates
         }
     }
     
@@ -574,18 +590,20 @@ void searchPhase() {
             continue;       // restart loop
         }
 
-        if(status.isBall) {
-            stopTask(searchingBallTask); // Stop searching when ball is found
-            motor[motorLeft] =0;
-            motor[motorRight] =0;
-            wait1Msec(100); // Wait for a moment to stabilize
+        if(status.isBall || status.isBallDetectedFlag) {
+            stopTask(searchingBallTask);
+            motor[motorLeft] = 0;
+            motor[motorRight] = 0;
+            wait1Msec(100);
             currentState = COLLECT;
             break;
         }
         
-        if(status.isBallPicked) {  // Bypass collectPhase and jump straight to RETURN if ball is picked up by luck
-            stopTask(searchingBallTask); // Stop searching if ball is picked
-            currentState = RETURN;
+        if(status.isBallPicked) {
+            stopTask(searchingBallTask);
+            motor[motorLeft] = 0;
+            motor[motorRight] = 0;
+            currentState= DELIVER;
             break;
         }
 
@@ -620,17 +638,23 @@ void collectPhase() {
         if (status.isBallPicked){
             clearTimer(T1);  // Reset timer T1 
             stopTask(moveTowardsBallTask); // Stop moving towards the ball
+            motor[motorLeft] = 0;  
+            motor[motorRight] = 0;
             startTask(startBallSecuring); // Start securing the ball
             currentState = RETURN;
             break;
         }
 
-         // Timeout check - if more than 7 seconds without any reset conditions
-         if (time1[T1] > 7000) {
-            stopTask(moveTowardsBallTask);
-            currentState = SEARCH;
+          // Timeout check - if more than 6 seconds without picking ball
+        if (time1[T1] > 6000) {  // 6 seconds
+            clearTimer(T1);  // Stop the timer
+            stopTask(moveTowardsBallTask);  // Stop moving towards the ball
+            motor[motorLeft] = 0;  
+            motor[motorRight] = 0;
+            currentState = SEARCH;  // Restart the search phase if no ball is picked
             break;
         }
+
         wait1Msec(50);
     }
 }
@@ -658,6 +682,8 @@ void returnPhase() {
       
         if (status.reachedBase) {
             stopTask(returnToBaseTask); 
+            motor[motorLeft] = 0;  
+            motor[motorRight] = 0;
             currentState = DELIVER;
             break;  
         }
@@ -679,6 +705,10 @@ void deliverPhase() {
 
 //============================================================ Main Task ==================================================================
 task main() {
+
+    // Clear the debug stream (no need for NXT LCD display setting)
+    clearDebugStream();
+
     // Initialize all status flags to false
     resetStatus();
 

@@ -236,10 +236,10 @@ void turnDegrees(float degrees, bool right) {
 void randomsearch() {
     int angle = 50 + rand()%(360-50+1);
     int direction = rand() % 2;
+    turnDegrees(angle, direction);
+    wait1Msec(1000);
     motor[motorLeft] = 60;
     motor[motorRight] = 60;
-    wait1Msec(1000);
-    turnDegrees(angle, direction);
 }
 
 void searchingAlgo() {
@@ -373,7 +373,6 @@ void searchPhase() {
 
     while(currentState == SEARCH) {
         if(status.isBall || status.isBallDetectedFlag) {
-            writeDebugStreamLine("YUWEIISHOT.");
             stopTask(searchingBallTask);
             motor[motorLeft] = 0;
             motor[motorRight] = 0;
@@ -403,13 +402,15 @@ void collectPhase() {
         if (status.isBallPicked) {
             clearTimer(T1);  // Stop the timer when the ball is picked
             stopTask(moveTowardsBallTask);  // Stop the task
+            motor[motorLeft] = 0;  
+            motor[motorRight] = 0;
             startTask(startBallSecuring);  // Start securing the ball
             currentState = DELIVER;
             break;
         }
 
         // Timeout check - if more than 7 seconds without picking ball
-        else if (time1[T1] > 7000) {  // 7000 ms = 7 seconds
+        if (time1[T1] > 7000) {  // 7000 ms = 7 seconds
             clearTimer(T1);  // Stop the timer
             stopTask(moveTowardsBallTask);  // Stop moving towards the ball
             motor[motorLeft] = 0;  // Stop the motors
