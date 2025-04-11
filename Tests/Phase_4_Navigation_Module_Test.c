@@ -83,7 +83,6 @@ typedef struct {
     bool isDelivered;
     bool isfirstBallDelivered; // Flag to check if the first ball is delivered
     bool panRight; // Flag to check if should pan left or right at the start of the search
-    bool ballWithinSight; // Flag to check if the ball is within sight of the robot
 } StatusFlags;
 //============================================================ Enum definition ==================================================================
 typedef enum RollerMode {
@@ -271,7 +270,7 @@ void turnDegrees(float degrees, bool right) {
     SensorValue[LEFT_ENCODER] = 0;
     SensorValue[RIGHT_ENCODER] = 0;
 
-    int reducedSpeed = 127;
+    int reducedSpeed = 50;
 
     if (right) {
         motor[motorLeft] = (OFFSET_POWER_FOR_LEFT_MOTOR*reducedSpeed);
@@ -503,33 +502,24 @@ task returnToBaseTask(){
         returnToBase();
     }
 
-task roller_indexer() {
-        //run this conce
-        motor[BACK_ROLLER] = 50;
-        wait1Msec(1000);
-        motor[BACK_ROLLER] = 0;
-
-        while (true) {
-         //secure ball
-         waitUntil(status.isBallPicked);
-         motor[BACK_ROLLER] = -50; //close the flapper 
-         motor[FRONT_ROLLER] = -127;
-         wait1Msec(300);
-         motor[BACK_ROLLER] = 0;
-       
-         //dispense ball
-         waitUntil(status.reachedBase);
-         motor[FRONT_ROLLER] = 0;
-         motor[BACK_ROLLER] = -50;
-         wait1Msec(800);
-         motor[BACK_ROLLER] = 50;
-         wait1Msec(1000);
-         motor[BACK_ROLLER] = 0;
-        
-        wait1Msec(100);
-        }
+task startBallSecuring() {
+        motor[BACK_ROLLER] = -50;  // Close the flapper
+        frontRollerControl(OUTPUT); // Reverse the front roller to prevent extra balls from being picked up
+        wait1Msec(300);             // Wait for 300 milliseconds
+        motor[BACK_ROLLER] = 0;    // Stop the back roller
     }
 
+task startBallDispensing() {
+        frontRollerControl(STOP);   // Stop the front roller
+        motor[BACK_ROLLER] = -50;   // Reverse the back roller to dispense the ball
+        wait1Msec(800);             
+        //Open the flapper again
+        motor[BACK_ROLLER] = 50;    // Move the back roller forward to ensure ball is fully dispensed
+        wait1Msec(2000);            // Wait for 1000 milliseconds for the ball to be fully dispensed
+        motor[BACK_ROLLER] = 0;     // Stop the back roller
+}
+
+    
 //============================================================ Test Task ==================================================================
 // This task is for debugging purposes only
 
@@ -561,6 +551,7 @@ task testSensorModuleTask() {
 //============================================================ Phase Functions ==================================================================
 
 void searchPhase() {
+    frontRollerControl(INTAKE); // Start the front roller to intake the ball
     startTask(searchingBallTask); // Start searching for the ball
 
     while(currentState == SEARCH) {
@@ -628,7 +619,8 @@ void collectPhase() {
 
         if (status.isBallPicked){
             clearTimer(T1);  // Reset timer T1 
-            stopTask(moveTowardsBallTask);
+            stopTask(moveTowardsBallTask); // Stop moving towards the ball
+            startTask(startBallSecuring); // Start securing the ball
             currentState = RETURN;
             break;
         }
@@ -674,7 +666,8 @@ void returnPhase() {
 }
 
 void deliverPhase() {
-   while(true){
+    startTask(startBallDispensing); // Start dispensing the ball
+    while(true){
 
         if (!status.isBallPicked) {
             currentState = SEARCH; // Go back to search state
@@ -689,11 +682,13 @@ task main() {
     // Initialize all status flags to false
     resetStatus();
 
+    //Make the flapper open to pick up the ball
+    motor[BACK_ROLLER] = 50;
+    wait1Msec(1000);
+    motor[BACK_ROLLER] = 0;
+
     //Start the front roller to intake the ball 
     frontRollerControl(INTAKE);
-
-    // Start the roller indexer task
-    startTask(roller_indexer); 
 
     // Initialize sensor reading task
     startTask(readSensorsTask);
