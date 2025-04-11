@@ -317,11 +317,12 @@ float compass(int heading){
 void randomsearch() {
     int angle = 50 + rand()%(360-50+1);
     int direction = rand() % 2;
-    while(IR_A_value == false && IR_B_value == false){
+    if(IR_A_value == false && IR_B_value == false){
         turnDegrees(angle, direction);
         wait1Msec(1000);
         motor[motorLeft] = 60;
         motor[motorRight] = 60;
+	
       }
 }
 
