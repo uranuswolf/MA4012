@@ -228,7 +228,7 @@ void readSensors() {
     }
 
     if (currentState == RETURN && !status.reachedBase) {
-        if ((!limitSwitches[0] && !limitSwitches[1]) && // 0 means limit switch is pressed
+        if ((!limitSwitches[0] || !limitSwitches[1]) && // 0 means limit switch is pressed
             (IR_C_value == true && IR_D_value == true)) {
             status.reachedBase = true;
         }
@@ -393,36 +393,36 @@ void handleBoundary() {
     	writeDebugStreamLine("boundary on right! turn left");
         turnDegrees(90,false);       // Turn left
         moveDistance(0.3,false);     // Move forward 30cm
-    } else if (IR_B_value&& IR_D_value && limitSwitches[0] && limitSwitches[1]) {
+        return;
+    } if (IR_B_value && IR_D_value && limitSwitches[0] && limitSwitches[1]) {
         writeDebugStreamLine("boundary on left! turn right");
         turnDegrees(90,true);       // Turn right
         moveDistance(0.3,false);    // Move forward 30cm
-    } else if ((IR_A_value || IR_B_value) && limitSwitches[0] && limitSwitches[1]){
+        return;
+    } if ((IR_A_value || IR_B_value) && limitSwitches[0] && limitSwitches[1]){
         writeDebugStreamLine("boundary in front! turn back");
-	if (IR_A_value && !IR_B_value){
-	   turnDegrees(15,true); //turn right
+	    if (IR_A_value && !IR_B_value){
+	       turnDegrees(75,false); //turn left
            moveDistance(0.3,false); // Move forward 30cm
-	} else if (IR_B_value && !IR_A_value){
-	   turnDegrees(15,false);
-	   moveDistance(0.3,false);
-	} else if(IR_B_value && IR_A_value){
-	   turnDegrees(180,false);
-	   moveDistance(0.2,false);
-	}
+           return;
+	   
+        }if (IR_B_value && !IR_A_value){
+	       turnDegrees(75,true);
+	       moveDistance(0.3,false);
+           return;
+	    }if(IR_B_value && IR_A_value){
+            moveDistance(0.3,true);
+	       turnDegrees(180,false);
+           return;
+	    }
     } else if ((IR_C_value || IR_D_value) && limitSwitches[0] && limitSwitches[1]){
         writeDebugStreamLine("boundary in back! move front");
-        if (IR_C_value && !IR_D_value){
-	   turnDegrees(15,true); //turn right
-           moveDistance(0.3,false); // Move forward 30cm
-	} else if (IR_D_value && !IR_C_value){
-	   turnDegrees(15,false);
-	   moveDistance(0.3,false);
-	} else if(IR_C_value && IR_D_value){
-	   moveDistance(0.3,false);
-	}
+	    moveDistance(0.3,false);
+        return;
+	    }
 
 }
-}
+
 
 
 // Helper function to decide turn direction based on side distances
@@ -479,11 +479,12 @@ void handleObstacle() {
 void returnToBase() {
     //HOME_BASE_HEADING = 180;
 	int reducedSpeed = 30; // Adjust speed as needed
-    if(!compass(heading) == 180) {
+    while(!(compass(heading) == 180)) {
         writeDebugStreamLine("TURNING TO THE REQUIRED HOMEBASED HEADING");
         motor[motorLeft] = (OFFSET_POWER_FOR_LEFT_MOTOR*reducedSpeed);
         motor[motorRight] = -reducedSpeed;
         wait1Msec(1000);
+        break;
         }
 
         // Move backward continuously
@@ -498,7 +499,7 @@ void returnToBase() {
 task readSensorsTask() {
     while(true) {
         readSensors();
-        wait1Msec(500); 
+        wait1Msec(100); 
     }
 }
 
@@ -543,7 +544,7 @@ task readIsBall(){
     if (status.isBall && !status.isBallDetectedFlag) {
     status.isBallDetectedFlag = true;
     }
-    wait1Msec(800); // Small delay to prevent overloading the CPU
+    wait1Msec(1000); // Small delay to prevent overloading the CPU
     }
 }
 
