@@ -219,23 +219,16 @@ void readSensors() {
     status.isBackObstacle = (distances.distBC < 30.0);
 
     
-    status.isBall = ((distances.distFL <= 50) || (distances.distFR <= 50)) &&
-                    (!status.isFrontObstacle);
-    
-                    
-    if (status.isBall) {
-        status.isBallDetectedFlag = true;
-    }
-
         // Only update based on the switch inside the DELIVER check
     if (currentState == DELIVER) {
         status.isBallPicked = (limitSwitches[2] == 0); 
     } else {
+        writeDebugStreamLine("Ball picked: %d", limitSwitches[2]);
         status.isBallPicked = status.isBallPicked || (limitSwitches[2] == 0);
     }
 
     if (currentState == RETURN && !status.reachedBase) {
-        if ((limitSwitches[0] == 0 || limitSwitches[1] == 0) && // 0 means limit switch is pressed
+        if ((!limitSwitches[0] && !limitSwitches[1]) && // 0 means limit switch is pressed
             (IR_C_value == true && IR_D_value == true)) {
             status.reachedBase = true;
         }
@@ -324,10 +317,12 @@ float compass(int heading){
 void randomsearch() {
     int angle = 50 + rand()%(360-50+1);
     int direction = rand() % 2;
-    turnDegrees(angle, direction);
-    wait1Msec(1000);
-    motor[motorLeft] = 60;
-    motor[motorRight] = 60;
+    while(IR_A_value == false && IR_B_value == false){
+        turnDegrees(angle, direction);
+        wait1Msec(1000);
+        motor[motorLeft] = 60;
+        motor[motorRight] = 60;
+      }
 }
 
 
@@ -466,17 +461,18 @@ void handleObstacle() {
 
 void returnToBase() {
     //HOME_BASE_HEADING = 180;
-    while (!compass(heading) == 180) {
-        int reducedSpeed = 60; // Adjust speed as needed
+		int reducedSpeed = 50; // Adjust speed as needed
+    if(!compass(heading) == 180) {
+        writeDebugStreamLine("TURNING TO THE REQUIRED HOMEBASED HEADING");
+        int reducedSpeed = 50; // Adjust speed as needed
         motor[motorLeft] = (OFFSET_POWER_FOR_LEFT_MOTOR*reducedSpeed);
         motor[motorRight] = -reducedSpeed;
         wait1Msec(500);
-            break;
         }
 
         // Move backward continuously
-        motor[motorLeft] = -127;
-        motor[motorRight] = -127;
+        motor[motorLeft] = -(OFFSET_POWER_FOR_LEFT_MOTOR*reducedSpeed);
+        motor[motorRight] = -reducedSpeed;
     }
 
 
@@ -486,7 +482,7 @@ void returnToBase() {
 task readSensorsTask() {
     while(true) {
         readSensors();
-        wait1Msec(800); //OR USE 1000
+        wait1Msec(500); 
     }
 }
 
@@ -520,6 +516,19 @@ task startBallDispensing() {
         motor[BACK_ROLLER] = 50;    // Move the back roller forward to ensure ball is fully dispensed
         wait1Msec(2000);            // Wait for 1000 milliseconds for the ball to be fully dispensed
         motor[BACK_ROLLER] = 0;     // Stop the back roller
+}
+
+task readIsBall(){
+    while(true) {
+    status.isBall = ((distances.distFL <= 50) || (distances.distFR <= 50)) &&
+    (!status.isFrontObstacle);
+
+    
+    if (status.isBall && !status.isBallDetectedFlag) {
+    status.isBallDetectedFlag = true;
+    }
+    wait1Msec(800); // Small delay to prevent overloading the CPU
+    }
 }
 
     
@@ -558,7 +567,7 @@ task testSensorModuleTask() {
 
 
         // Display current robot state
-        writeDebugStreamLine("Current State: %d (0=SEARCH, 1=COLLECT, 2=DELIVER)", currentState);    
+        writeDebugStreamLine("Current State: %d (0=SEARCH, 1=COLLECT, 2=RETURN , 3=DELIVER)", currentState);    
         
         wait1Msec(1000); // Reduced delay for more frequent updates
         }
@@ -603,7 +612,8 @@ void searchPhase() {
             stopTask(searchingBallTask);
             motor[motorLeft] = 0;
             motor[motorRight] = 0;
-            currentState= DELIVER;
+            startTask(startBallSecuring);
+            currentState= RETURN;
             break;
         }
 
@@ -647,6 +657,7 @@ void collectPhase() {
 
           // Timeout check - if more than 6 seconds without picking ball
         if (time1[T1] > 6000) {  // 6 seconds
+            writeDebugStreamLine("Timeout: No ball picked in 6 seconds.");
             clearTimer(T1);  // Stop the timer
             stopTask(moveTowardsBallTask);  // Stop moving towards the ball
             motor[motorLeft] = 0;  
@@ -722,6 +733,7 @@ task main() {
 
     // Initialize sensor reading task
     startTask(readSensorsTask);
+    startTask(readIsBall); // Start the task to check if the ball is detected
     startTask(testSensorModuleTask); // for debugging purposes
     wait1Msec(500); // Allow sensors to stabilize
 

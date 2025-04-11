@@ -140,6 +140,8 @@ float getSharpDistance(tSensors sensor, int analogValue) {
 }
 
 void readSensors() {
+
+
    
     // Read limit switches
     limitSwitches[0] = SensorValue[limitswitchLB];
@@ -238,8 +240,10 @@ void randomsearch() {
     int direction = rand() % 2;
     turnDegrees(angle, direction);
     wait1Msec(1000);
-    motor[motorLeft] = 60;
-    motor[motorRight] = 60;
+    while(IR_value_A == 0 && IR_value_B == 0){ //keep running when IR_A and IR_B are not detected
+      motor[motorLeft] = 60;
+      motor[motorRight] = 60;
+    }
 }
 
 void searchingAlgo() {
