@@ -422,6 +422,7 @@ void handleBoundary() {
 	}
 
 }
+}
 
 
 // Helper function to decide turn direction based on side distances
