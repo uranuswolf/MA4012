@@ -317,12 +317,11 @@ float compass(int heading){
 void randomsearch() {
     int angle = 50 + rand()%(360-50+1);
     int direction = rand() % 2;
-    float distance = (rand()%(21))/10;
-    if(IR_A_value == false && IR_B_value == false){
+    while(IR_A_value == false && IR_B_value == false){
         turnDegrees(angle, direction);
         wait1Msec(1000);
-	moveDistance(distance,false);
-	
+        motor[motorLeft] = 60;
+        motor[motorRight] = 60;
       }
 }
 
@@ -445,7 +444,7 @@ void handleObstacle() {
     
     // Handle front obstacles if moving forward
     if (status.isFrontObstacle) {
-        if (distances.distFC <= 15) {
+        if (distances.distFC <= 20) {
             moveDistance(0.2, true);  // Reverse 20cm away from the obstacle
         }
         
