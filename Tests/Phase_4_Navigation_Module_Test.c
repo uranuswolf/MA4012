@@ -399,12 +399,28 @@ void handleBoundary() {
         moveDistance(0.3,false);    // Move forward 30cm
     } else if ((IR_A_value || IR_B_value) && limitSwitches[0] && limitSwitches[1]){
         writeDebugStreamLine("boundary in front! turn back");
-        moveDistance(0.2,true);    // Move back 10cm
-        turnDegrees(180,true);     //Reverse
+	if (IR_A_value && !IR_B_value){
+	   turnDegrees(15,true); //turn right
+           moveDistance(0.3,false); // Move forward 30cm
+	} else if (IR_B_value && !IR_A_value){
+	   turnDegrees(15,false);
+	   moveDistance(0.3,false);
+	} else if(IR_B_value && IR_A_value){
+	   turnDegrees(180,false);
+	   moveDistance(0.2,false);
+	}
     } else if ((IR_C_value || IR_D_value) && limitSwitches[0] && limitSwitches[1]){
         writeDebugStreamLine("boundary in back! move front");
-        moveDistance(0.3,false); // Move forward 30cm
-    }
+        if (IR_C_value && !IR_D_value){
+	   turnDegrees(15,true); //turn right
+           moveDistance(0.3,false); // Move forward 30cm
+	} else if (IR_D_value && !IR_C_value){
+	   turnDegrees(15,false);
+	   moveDistance(0.3,false);
+	} else if(IR_C_value && IR_D_value){
+	   moveDistance(0.3,false);
+	}
+
 }
 
 
