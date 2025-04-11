@@ -215,8 +215,8 @@ void readSensors() {
 
     // Update status flags
     status.isBoundary = (IR_A_value || IR_B_value ||IR_C_value || IR_D_value);
-    status.isFrontObstacle = (distances.distFC < 30.0);
-    status.isBackObstacle = (distances.distBC < 30.0);
+    status.isFrontObstacle = (distances.distFC < 20.0);
+    status.isBackObstacle = (distances.distBC < 20.0);
 
     
         // Only update based on the switch inside the DELIVER check
@@ -536,7 +536,7 @@ task startBallDispensing() {
 
 task readIsBall(){
     while(true) {
-    status.isBall = ((distances.distFL <= 50) || (distances.distFR <= 50)) &&
+    status.isBall = ((distances.distFL <= 30) || (distances.distFR <= 30)) &&
     (!status.isFrontObstacle);
 
     
