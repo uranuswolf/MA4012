@@ -461,13 +461,12 @@ void handleObstacle() {
 
 void returnToBase() {
     //HOME_BASE_HEADING = 180;
-		int reducedSpeed = 50; // Adjust speed as needed
+	int reducedSpeed = 30; // Adjust speed as needed
     if(!compass(heading) == 180) {
         writeDebugStreamLine("TURNING TO THE REQUIRED HOMEBASED HEADING");
-        int reducedSpeed = 50; // Adjust speed as needed
         motor[motorLeft] = (OFFSET_POWER_FOR_LEFT_MOTOR*reducedSpeed);
         motor[motorRight] = -reducedSpeed;
-        wait1Msec(500);
+        wait1Msec(1000);
         }
 
         // Move backward continuously
