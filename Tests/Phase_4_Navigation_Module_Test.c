@@ -543,7 +543,7 @@ task readIsBall(){
     if (status.isBall && !status.isBallDetectedFlag) {
     status.isBallDetectedFlag = true;
     }
-    wait1Msec(1000); // update once every second
+    wait1Msec(100); // update once every second
     }
 }
 
@@ -633,7 +633,7 @@ void searchPhase() {
             break;
         }
 
-        wait1Msec(50); 
+        wait1Msec(100); 
     }
 }
 
@@ -682,7 +682,7 @@ void collectPhase() {
             break;
         }
 
-        wait1Msec(50);
+        wait1Msec(100);
     }
 }
 
@@ -690,7 +690,8 @@ void returnPhase() {
     startTask(returnToBaseTask); // Start returning to base
     while(currentState == RETURN) {
         // Step 1: Handle boundary first
-        if (status.isBoundary) {
+        if (status.isBoundary && !status.reachedBase) {
+
             stopTask(returnToBaseTask); 
             handleBoundary();
             wait1Msec(500); // small pause to stabilize
@@ -714,7 +715,7 @@ void returnPhase() {
             currentState = DELIVER;
             break;  
         }
-        wait1Msec(50);
+        wait1Msec(100);
 }
 }
 
@@ -726,7 +727,7 @@ void deliverPhase() {
             currentState = SEARCH; // Go back to search state
             break;
         }
-        wait1Msec(50);
+        wait1Msec(100);
     }
 }
 
