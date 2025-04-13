@@ -97,7 +97,8 @@ typedef enum RobotState {
     SEARCH,
     COLLECT,
     RETURN,
-    DELIVER
+    DELIVER,
+    STUCK,
 } RobotState;
 
 // ============================================================ Global Variables ==================================================================
@@ -847,7 +848,7 @@ task main() {
                 deliverPhase();
                 break;
             case STUCK:
-                stuckPhase():
+                stuckPhase();
                 break;
         }
         wait1Msec(100);
