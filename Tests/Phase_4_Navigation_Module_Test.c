@@ -500,7 +500,7 @@ void handleObstacle() {
 
         // Recheck if the back obstacle is still present
         if (status.isBackObstacle) {
-            writeDebugStreamLine("HANDLING BACK OBSTACLE NOWWWWWWWWWW");
+            writeDebugStreamLine("HANDLING BACK OBSTACLE NOWWW");
             decideTurn(distances.distFL, distances.distFR);
             moveDistance(0.2,true);  // Move forward slightly after turn
         }
@@ -528,12 +528,11 @@ void readStuck() {
     int a = SensorValue(LEFT_ENCODER);
     wait1Msec(6000);
     int b = SensorValue(LEFT_ENCODER);
-    if (a <= b + 15){
+    if (a <= (b + 30)){
         writeDebugStreamLine("the robot is stuck");
         status.isStuck = true;
         return;
     }
-
 }
 
 //============================================================ Task Definitions ==================================================================
@@ -624,6 +623,16 @@ void searchPhase() {
 
     while(currentState == SEARCH) {
 
+        if(status.isStuck){
+            writeDebugStreamLine("ROBOT STUCK"); 
+            stopTask(searchingBallTask);
+            motor[motorLeft] = 0;
+            motor[motorRight] = 0;
+            wait1Msec(1000);
+            currentState = STUCK;
+            break;
+        }
+
         // Step 1: Handle boundary first
         if (status.isBoundary) {
             stopTask(searchingBallTask); 
@@ -652,25 +661,6 @@ void searchPhase() {
             break;
         }
         
-        if(status.isBallPicked) {
-            stopTask(searchingBallTask);
-            motor[motorLeft] = 0;
-            motor[motorRight] = 0;
-            startTask(startBallSecuring);
-            currentState= RETURN;
-            break;
-        }
-
-        if(status.isStuck){
-            writeDebugStreamLine("ROBOT STUCK"); 
-            stopTask(searchingBallTask);
-            motor[motorLeft] = 0;
-            motor[motorRight] = 0;
-            wait1Msec(1000);
-            currentState = STUCK;
-            break;
-        }
-
         wait1Msec(60); 
     }
 }
@@ -682,6 +672,17 @@ void collectPhase() {
     clearTimer(T1);  // Reset timer T1 at the beginning
     
     while(currentState == COLLECT) {
+
+        if(status.isStuck){
+            writeDebugStreamLine("ROBOT STUCK"); 
+            stopTask(moveTowardsBallTask);
+            motor[motorLeft] = 0;
+            motor[motorRight] = 0;
+            wait1Msec(1000);
+            currentState = STUCK;
+            break;
+        }
+
         // Step 1: Handle boundary first
         if (status.isBoundary) {
             stopTask(moveTowardsBallTask); 
@@ -707,16 +708,6 @@ void collectPhase() {
             motor[motorRight] = 0;
             startTask(startBallSecuring); // Start securing the ball
             currentState = RETURN;
-            break;
-        }
-
-        if(status.isStuck){
-            writeDebugStreamLine("ROBOT STUCK"); 
-            stopTask(searchingBallTask);
-            motor[motorLeft] = 0;
-            motor[motorRight] = 0;
-            wait1Msec(1000);
-            currentState = STUCK;
             break;
         }
 
@@ -800,13 +791,15 @@ void deliverPhase() {
 }
 
 void stuckPhase() {
-    if(!IR_A_value || !IR_B_value){
+    
         motor[motorLeft] = -127;
         motor[motorRight] = -127;
-    } else{
+        wait1Msec(2000);
+        motor[motorLeft] = 0;
+        motor[motorRight] = 0;
         currentState = SEARCH;
+        status.isStuck = false;
         return;
-    }
 }
 
 //============================================================ Main Task ==================================================================
@@ -829,7 +822,7 @@ task main() {
     // Initialize sensor reading task
     startTask(readSensorsTask);
     startTask(readStuckTask);
-    startTask(testSensorModuleTask); // for debugging purposes
+    //startTask(testSensorModuleTask); 
     wait1Msec(500); // Allow sensors to stabilize
 
     while(true) {
