@@ -84,6 +84,7 @@ typedef struct {
     bool isfirstBallDelivered; 
     bool panRight; 
     bool isBallDetectedFlag;
+    bool isStuck;
 } StatusFlags;
 //============================================================ Enum definition ==================================================================
 typedef enum RollerMode {
@@ -125,11 +126,13 @@ void turnDegrees(float degrees, bool right=false);
 void searchingAlgo(void);
 void resetStatus(void);
 void moveTowardsBall(void);
+void readStuck(void);
 
 void searchPhase(void);
 void collectPhase(void);
 void returnPhase(void);
 void deliverPhase(void);
+void stuckPhase(void);
 
 void decideTurn(float leftDist, float rightDist);
 void handleObstacle(void);
@@ -137,7 +140,6 @@ void handleBoundary(void);
 void returnToBase(void);
 float compass(int heading);
 void randomsearch(void);
-
 
 
 
@@ -151,6 +153,7 @@ void resetStatus() {
     status.reachedBase = false;
     status.panRight = false;
     status.isBallDetectedFlag = false;
+    status.isStuck = false;
 }
 
 void frontRollerControl(RollerMode mode) {
@@ -520,7 +523,17 @@ void returnToBase() {
         motor[motorRight] = -(reducedSpeed*0.8);
     }
 
+void readStuck() {
+    int a = SensorValue(LEFT_ENCODER);
+    wait1Msec(6000);
+    int b = SensorValue(LEFT_ENCODER);
+    if (a <= b + 15){
+        writeDebugStreamLine("the robot is stuck");
+        status.isStuck = true;
+        return;
+    }
 
+}
 
 //============================================================ Task Definitions ==================================================================
 
@@ -550,7 +563,12 @@ task startBallSecuring() {
         motor[BACK_ROLLER] = 0;    // Stop the back roller
     }
 
-
+task readStuckTask(){
+    while(true){
+        readStuck();
+        wait1Msec(10);
+    }
+}
     
 //============================================================ Test Task ==================================================================
 // This task is for debugging purposes only
@@ -583,6 +601,10 @@ task testSensorModuleTask() {
         // Additional status checks
         if (status.isBallDetectedFlag) {
             writeDebugStreamLine("Status: Ball detected flag is set.");
+        }
+
+        if (status.isStuck){
+            writeDebugStreamLine("Status: Robot is stuck.");
         }
 
 
@@ -638,6 +660,16 @@ void searchPhase() {
             break;
         }
 
+        if(status.isStuck){
+            writeDebugStreamLine("ROBOT STUCK"); 
+            stopTask(searchingBallTask);
+            motor[motorLeft] = 0;
+            motor[motorRight] = 0;
+            wait1Msec(1000);
+            currentState = STUCK;
+            break;
+        }
+
         wait1Msec(60); 
     }
 }
@@ -674,6 +706,16 @@ void collectPhase() {
             motor[motorRight] = 0;
             startTask(startBallSecuring); // Start securing the ball
             currentState = RETURN;
+            break;
+        }
+
+        if(status.isStuck){
+            writeDebugStreamLine("ROBOT STUCK"); 
+            stopTask(searchingBallTask);
+            motor[motorLeft] = 0;
+            motor[motorRight] = 0;
+            wait1Msec(1000);
+            currentState = STUCK;
             break;
         }
 
@@ -756,6 +798,15 @@ void deliverPhase() {
           
 }
 
+void stuckPhase() {
+    if(!IR_A_value || !IR_B_value){
+        motor[motorLeft] = -127;
+        motor[motorRight] = -127;
+    } else{
+        currentState = SEARCH;
+        return;
+    }
+}
 
 //============================================================ Main Task ==================================================================
 task main() {
@@ -776,6 +827,7 @@ task main() {
 
     // Initialize sensor reading task
     startTask(readSensorsTask);
+    startTask(readStuckTask);
     startTask(testSensorModuleTask); // for debugging purposes
     wait1Msec(500); // Allow sensors to stabilize
 
@@ -793,6 +845,9 @@ task main() {
                 break;
             case DELIVER:
                 deliverPhase();
+                break;
+            case STUCK:
+                stuckPhase():
                 break;
         }
         wait1Msec(100);
