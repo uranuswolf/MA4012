@@ -238,7 +238,7 @@ void readSensors() {
 
     if (currentState == RETURN && !status.reachedBase) {
         if ((!limitSwitches[0] || !limitSwitches[1]) && // 0 means limit switch is pressed
-            (IR_C_value == true && IR_D_value == true)) {
+            (IR_C_value == true || IR_D_value == true)) {
             status.reachedBase = true;
         }
     }
@@ -352,7 +352,7 @@ void searchingAlgo() {
         turnDegrees(PAN_ANGLE, status.panRight);
         wait1Msec(700);
         turnDegrees((3*PAN_ANGLE), !status.panRight);
-        wait1Msec(600);
+        wait1Msec(1000);
        
 
         // 2nd pan in 2nd row 
@@ -365,7 +365,7 @@ void searchingAlgo() {
         turnDegrees(PAN_ANGLE, status.panRight);
         wait1Msec(700);
         turnDegrees((3*PAN_ANGLE), !status.panRight);
-        wait1Msec(600);
+        wait1Msec(1000);
     }
     else {
         randomsearch();
@@ -377,14 +377,14 @@ void searchingAlgo() {
 void moveTowardsBall() {
     if (distances.distFL < distances.distFR) {
         // Ball is more to the left
-        turnDegrees(15, false);
+        turnDegrees(10, false);
         wait1Msec(1100);
         motor[motorLeft] = (30*OFFSET_POWER_FOR_LEFT_MOTOR);
         motor[motorRight] = 30;
     }
     else {
         // Ball is more to the right
-        turnDegrees(15, true);
+        turnDegrees(10, true);
         wait1Msec(1100);
         motor[motorLeft] = (30*OFFSET_POWER_FOR_LEFT_MOTOR);
         motor[motorRight] = 30;
@@ -406,7 +406,7 @@ void handleBoundary() {
     // Combined special cases first
     if (IR_A_value && IR_C_value && limitSwitches[0] && limitSwitches[1]) { 
         writeDebugStreamLine("boundary on right! turn left");
-        turnDegreesWithBoundaryCheck(75, false, 2000); // Turn left with boundary checking
+        turnDegreesWithBoundaryCheck(75, false, 3000); // Turn left with boundary checking
         if (!status.isBoundary) {
             moveDistanceWithBoundaryCheck(0.45, false, 500); // Move forward with boundary checking
         }
@@ -415,7 +415,7 @@ void handleBoundary() {
     
     if (IR_B_value && IR_D_value && limitSwitches[0] && limitSwitches[1]) {
         writeDebugStreamLine("boundary on left! turn right");
-        turnDegreesWithBoundaryCheck(75, true, 2000); // Turn right with boundary checking
+        turnDegreesWithBoundaryCheck(75, true, 3000); // Turn right with boundary checking
         if (!status.isBoundary) {
             moveDistanceWithBoundaryCheck(0.45, false, 500); // Move forward with boundary checking
         }
@@ -428,13 +428,13 @@ void handleBoundary() {
         if(IR_B_value && IR_A_value) {
             moveDistanceWithBoundaryCheck(0.45, true, 500); // Reverse with boundary checking
             if (!status.isBoundary) {
-                turnDegreesWithBoundaryCheck(180, false, 2000); // 180 turn with boundary checking
+                turnDegreesWithBoundaryCheck(180, false, 5000); // 180 turn with boundary checking
             }
             return;
         }
         
         if (IR_B_value && !IR_A_value) {
-            turnDegreesWithBoundaryCheck(75, true, 2000); // Turn right with boundary checking
+            turnDegreesWithBoundaryCheck(75, true, 3000); // Turn right with boundary checking
             if (!status.isBoundary) {
                 moveDistanceWithBoundaryCheck(0.45, false, 500); // Move forward with boundary checking
             }
@@ -442,7 +442,7 @@ void handleBoundary() {
         }
         
         if(IR_A_value && !IR_B_value) {
-            turnDegreesWithBoundaryCheck(75, false, 2000); // Turn left with boundary checking
+            turnDegreesWithBoundaryCheck(75, false, 3000); // Turn left with boundary checking
             if (!status.isBoundary) {
                 moveDistanceWithBoundaryCheck(0.45, false, 500); // Move forward with boundary checking
             }
@@ -461,7 +461,7 @@ void handleBoundary() {
         if (IR_C_value && !IR_D_value) {
             moveDistanceWithBoundaryCheck(0.45, false, 500); // Move forward with boundary checking
             if (!status.isBoundary) {
-                turnDegreesWithBoundaryCheck(35, true, 2000); // Turn right with boundary checking
+                turnDegreesWithBoundaryCheck(35, true, 3000); // Turn right with boundary checking
             }
             return;
         }
@@ -469,7 +469,7 @@ void handleBoundary() {
         if (IR_D_value && !IR_C_value) {
             moveDistanceWithBoundaryCheck(0.45, false, 500); // Move forward with boundary checking
             if (!status.isBoundary) {
-                turnDegreesWithBoundaryCheck(35, false, 2000); // Turn left with boundary checking
+                turnDegreesWithBoundaryCheck(35, false, 3000); // Turn left with boundary checking
             }
             return;
         }
