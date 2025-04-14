@@ -431,14 +431,8 @@ void handleBoundary() {
     } 
     
     if ((IR_C_value || IR_D_value) && limitSwitches[0] && limitSwitches[1]) {
-        writeDebugStreamLine("boundary in back! move front");
-       
-//        motor[motorLeft] = (127*OFFSET_POWER_FOR_LEFT_MOTOR);
-//        motor[motorRight] = 127;
-//        wait1Msec(200);
-//        motor[motorLeft] = 0;
-//       motor[motorRight] = 0;
-        
+
+        writeDebugStreamLine("boundary in back! move front"); 
         if(IR_C_value && IR_D_value) {
             moveDistance(0.1,false);
             return;
@@ -779,7 +773,7 @@ void deliverPhase() {
 //============================================================ Main Task ==================================================================
 task main() {
 
-    // Clear the debug stream (no need for NXT LCD display setting)
+    // Clear the debug stream 
     clearDebugStream();
 
     // Initialize all status flags to false
@@ -787,7 +781,7 @@ task main() {
 
     //Make the flapper open to pick up the ball
     motor[BACK_ROLLER] = 50;
-    
+    wait1Msec(100);
     motor[BACK_ROLLER] = 0;
 
     //Start the front roller to intake the ball 
